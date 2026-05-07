@@ -1,0 +1,14 @@
+{
+  "path": "src",
+  "minLines": 5,
+  "threshold": 5,
+  "reporters": ["console", "json"],
+  "output": "jscpd-report",
+  "exclude": [
+    "node_modules/**",
+    "dist/**",
+    "public/**",
+    "**/*.test.*",
+    "src/**/*.(spec|test).*"
+  ]
+}

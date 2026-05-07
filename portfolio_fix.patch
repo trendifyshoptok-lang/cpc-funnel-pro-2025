@@ -1,0 +1,1783 @@
+# Patch: Replace src/components/Portfolio.tsx with updated version
+# Save this file and overwrite your existing file at src/components/Portfolio.tsx if desired.
+# Example (PowerShell):
+#   Copy-Item -Path .\portfolio_fix.patch -Destination .\src\components\Portfolio.tsx -Force
+
+import React, { useState, useMemo, useEffect } from "react";
+import type {
+  PortfolioProps,
+  EnrichedProduct,
+  OptimizationResult,
+  AllocationItem,
+  Currency,
+} from "../types";
+import { optimizePortfolio, optimizePortfolioSimplex } from "../services/logic";
+import { useCurrency } from "../contexts/CurrencyContext";
+import { getCurrencySymbol } from "../utils/currency";
+import {
+  Zap,
+  TrendingUp,
+  DollarSign,
+  FolderOpen,
+  Search,
+  Trash2,
+  BarChart2,
+  Archive,
+  Filter,
+  Award,
+  AlertTriangle,
+  TrendingDown,
+  Target,
+  
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Activity,
+  Package,
+  Info,
+  HelpCircle,
+} from "lucide-react";
+
+// ============================================================
+// 🎯 TYPE DEFINITIONS
+// ============================================================
+type SortField = "name" | "profit" | "roi" | "spend" | "revenue" | "campaigns";
+type SortDirection = "asc" | "desc";
+type FilterStatus = "all" | "profitable" | "negative" | "neutral";
+type OptimizationMethod = "simple" | "simplex";
+
+// ============================================================
+// 🔧 UTILITY: Mapeamento Market → Currency
+// ============================================================
+const getCurrencyFromMarket = (market: string): string => {
+  switch (market) {
+    case "US":
+    case "OTHER":
+      return "USD";
+    case "EU":
+      return "EUR";
+    case "UK":
+      return "GBP";
+    case "BR":
+    default:
+      return "BRL";
+  }
+};
+
+// ============================================================
+// 🔧 UTILITY: Conversão para BRL (apenas valor numérico)
+// ============================================================
+const convertToBRL = (
+  value: number,
+  market: string,
+  rates: Record<string, number>,
+  currencyParam?: string
+): number => {
+  // Proteção: se o produto estiver marcado como BR ou a moeda for BRL, usar rate = 1
+  const currency = currencyParam || getCurrencyFromMarket(market);
+  const rate = market === "BR" || currency === "BRL" ? 1 : rates[currency] || 1;
+  return (value || 0) * rate;
+};
+
+// ============================================================
+// 🎨 COMPONENT: Badge de Moeda (Indicador visual)
+// ============================================================
+interface CurrencyBadgeProps {
+  market: string;
+  size?: "sm" | "md" | "lg";
+}
+
+const CurrencyBadge: React.FC<CurrencyBadgeProps> = ({
+  market,
+  size = "md",
+}) => {
+  if (market === "BR") return null;
+
+  const sizeClasses = {
+    sm: "text-[10px] px-2 py-0.5",
+    md: "text-xs px-3 py-1",
+    lg: "text-sm px-4 py-1.5",
+  };
+
+  const currencyInfo: Record<string, { flag: string; label: string }> = {
+    US: { flag: "🇺🇸", label: "USD" },
+    OTHER: { flag: "🇺🇸", label: "USD" },
+    EU: { flag: "🇪🇺", label: "EUR" },
+    UK: { flag: "🇬🇧", label: "GBP" },
+  };
+
+  const info = currencyInfo[market] || {
+    flag: "🌎",
+    label: market,
+  };
+
+  return (
+    <span
+      className={`bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full font-bold inline-flex items-center gap-1 ${sizeClasses[size]}`}
+    >
+      {info.flag} {info.label}
+    </span>
+  );
+};
+
+// ============================================================
+// 🎨 COMPONENT: Tooltip de Taxa de Câmbio
+// ============================================================
+interface ExchangeRateTooltipProps {
+  market: string;
+  rates: Record<string, number>;
+}
+
+const ExchangeRateTooltip: React.FC<ExchangeRateTooltipProps> = ({
+  market,
+  rates,
+}) => {
+  if (market === "BR") return null;
+
+  const currency = getCurrencyFromMarket(market);
+  const rate = rates[currency] || 1;
+
+  return (
+    <div className="group relative inline-block ml-1">
+      <HelpCircle size={12} className="text-blue-400 cursor-help inline" />
+      <div className="invisible group-hover:visible absolute z-[9999] w-52 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-xl -top-2 left-5 border border-gray-700">
+        <strong className="block mb-1">💱 Taxa de Câmbio</strong>
+        <p className="text-gray-300">
+          1 {currency} = R$ {rate.toFixed(2)}
+        </p>
+        <p className="text-gray-400 text-[10px] mt-1">
+          Valores convertidos automaticamente
+        </p>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================
+// 🎨 COMPONENT: Exibição de Valor com Conversão Dual
+// ============================================================
+interface DualCurrencyDisplayProps {
+  value: number;
+  market: string;
+  rates: Record<string, number>;
+  currency?: string;
+  className?: string;
+  showOriginal?: boolean;
+}
+
+const DualCurrencyDisplay: React.FC<DualCurrencyDisplayProps> = ({
+  value,
+  market,
+  rates,
+  currency,
+  className = "",
+  showOriginal = true,
+}) => {
+  const isInternational = market !== "BR" && (currency || getCurrencyFromMarket(market)) !== "BRL";
+
+  // Nacional or product explicitly in BRL: apenas BRL
+  const currencyFromMarket = currency || getCurrencyFromMarket(market);
+  const rate = market === "BR" || currencyFromMarket === "BRL" ? 1 : rates[currencyFromMarket] || 1;
+  const valueInBRL = (value || 0) * rate;
+
+  if (!isInternational) {
+    return (
+      <span className={className || "font-bold text-gray-900"}>
+        R$ {(valueInBRL || 0).toFixed(2)}
+      </span>
+    );
+  }
+
+  return (
+    <div className="flex flex-col">
+      {showOriginal && (
+        <span className="text-xs text-gray-500 font-medium">
+          {getCurrencySymbol(currencyFromMarket as Currency)} {(value || 0).toFixed(2)}
+        </span>
+      )}
+      <span className={className || "font-bold text-gray-900 text-base"}>
+        ≈ R$ {(valueInBRL || 0).toFixed(2)}
+      </span>
+    </div>
+  );
+};
+
+export const Portfolio: React.FC<
+  PortfolioProps & { fixedCostsTotal?: number }
+> = ({
+  products,
+  history,
+  onDeleteProduct,
+  onSelectProductForAnalysis,
+  fixedCostsTotal = 0,
+}) => {
+  // ============================================================
+  // 🎯 HOOKS & ESTADOS
+  // ============================================================
+  const { rates } = useCurrency();
+  const [simplexBudget, setSimplexBudget] = useState(1000);
+  const [allocation, setAllocation] = useState<OptimizationResult | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortField, setSortField] = useState<SortField>("profit");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
+  const [filterNicho, setFilterNicho] = useState<string>("all");
+  const [optimizationMethod, setOptimizationMethod] =
+    useState<OptimizationMethod>("simple");
+
+  // Reset allocation quando mudar método
+  useEffect(() => {
+    // Deferir para evitar setState síncrono dentro do effect (evita cascata de renders)
+    const t = setTimeout(() => setAllocation(null), 0);
+    return () => clearTimeout(t);
+  }, [optimizationMethod]);
+
+  // ============================================================
+  // 🔄 HANDLER: Otimização
+  // ============================================================
+  const handleOptimize = () => {
+    try {
+      if (!simplexBudget || simplexBudget <= 0) {
+        alert("Por favor, insira um orçamento válido maior que zero.");
+        return;
+      }
+
+      if (!products || products.length === 0) {
+        alert("Não há produtos disponíveis para otimização.");
+        return;
+      }
+
+      let result: OptimizationResult | null = null;
+
+      try {
+        if (optimizationMethod === "simple") {
+          result = optimizePortfolio(
+            simplexBudget,
+            products,
+            history || [],
+            rates
+          );
+        } else {
+          result = optimizePortfolioSimplex(
+            simplexBudget,
+            products,
+            history || [],
+            rates
+          );
+        }
+      } catch (calcError) {
+        console.error("Erro no cálculo:", calcError);
+        alert("Erro no cálculo. Tente novamente.");
+        return;
+      }
+
+      if (!result || typeof result !== "object") {
+        console.error("Resultado inválido:", result);
+        alert("Erro ao calcular otimização. Tente novamente.");
+        return;
+      }
+
+      setAllocation(result);
+    } catch (error) {
+      console.error("❌ Erro geral:", error);
+      alert("Ocorreu um erro. Verifique o console (F12) para detalhes.");
+      setAllocation(null);
+    }
+  };
+
+  // ============================================================
+  // 📊 ENRIQUECIMENTO DE PRODUTOS (COM CONVERSÃO)
+  // ============================================================
+  const enrichedProducts: EnrichedProduct[] = useMemo(() => {
+    // --- NOVO CÓDIGO (Rateio Global) ---
+    // Conta produtos com campanhas para dividir a conta
+    const activeProducts = products.filter((p) =>
+      history.some((h) => h.productId === p.id)
+    );
+    const activeCount = activeProducts.length > 0 ? activeProducts.length : 1;
+    const globalCostShare = fixedCostsTotal / activeCount;
+    // ------------------------------------
+
+    return products.map((p) => {
+      const prodHistory = history.filter((h) => h.productId === p.id);
+
+      // Contar campanhas únicas
+      const uniqueCampaignIds = new Set(
+        prodHistory.map((h) => h.campaignId).filter(Boolean)
+      );
+
+      // Pegar último snapshot
+      let spend = 0;
+      let revenue = 0;
+      let conversions = 0;
+      let clicks = 0;
+
+      if (prodHistory.length > 0) {
+        const lastSnapshot = prodHistory.sort(
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+        )[0];
+
+        spend = lastSnapshot.spend;
+        revenue = lastSnapshot.revenue;
+        conversions = lastSnapshot.conversions;
+        clicks = lastSnapshot.clicks;
+      }
+
+      // ✅ CORREÇÃO: Usar p.costs?.total (não specificCosts)
+      const fixedCosts = p.specificCosts?.total || 0;
+
+      // ✅ CONVERSÃO: Converter valores para BRL se internacional
+      // Detectar moeda do produto e aplicar exchangeRate seguro
+      const spendBRL = convertToBRL(spend || 0, p.market, rates, p.currency);
+      const revenueBRL = convertToBRL(revenue || 0, p.market, rates, p.currency);
+      const fixedCostsBRL = convertToBRL(fixedCosts || 0, p.market, rates, p.currency);
+
+      // Cálculos sempre em BRL (moeda base) com fallbacks || 0
+      const profitBRL = (revenueBRL || 0) - (spendBRL || 0) - (fixedCostsBRL || 0) - (globalCostShare || 0);
+      const totalInvestmentBRL = (spendBRL || 0) + (fixedCostsBRL || 0) + (globalCostShare || 0);
+      const roi = totalInvestmentBRL > 0 ? ((profitBRL || 0) / (totalInvestmentBRL || 1)) * 100 : 0;
+
+      const roas = spendBRL > 0 ? revenueBRL / spendBRL : 0;
+      const cr = clicks > 0 ? (conversions / clicks) * 100 : 0;
+      const cpcBRL = clicks > 0 ? spendBRL / clicks : 0;
+      const avgTicketBRL = conversions > 0 ? revenueBRL / conversions : 0;
+
+      // Status baseado em ROI
+      let status: "excellent" | "good" | "warning" | "danger" = "good";
+      if (roi > 100) status = "excellent";
+      else if (roi > 50) status = "good";
+      else if (roi > 0) status = "warning";
+      else status = "danger";
+
+      // Health Score
+      let healthScore = 50;
+      if (roi > 100) healthScore += 30;
+      else if (roi > 50) healthScore += 20;
+      else if (roi > 0) healthScore += 10;
+      else healthScore -= 20;
+
+      if (cr > 2) healthScore += 20;
+      else if (cr > 1) healthScore += 10;
+
+      healthScore = Math.max(0, Math.min(100, healthScore));
+
+      return {
+        ...p,
+        campaignCount:
+          uniqueCampaignIds.size > 0
+            ? uniqueCampaignIds.size
+            : prodHistory.length > 0
+            ? 1
+            : 0,
+        // Valores originais (moeda do produto)
+        spend,
+        revenue,
+        fixedCosts,
+        // Valores convertidos em BRL
+        spendBRL,
+        revenueBRL,
+        fixedCostsBRL,
+        profit: profitBRL,
+        roi,
+        roas,
+        conversions,
+        clicks,
+        cr,
+        cpc: cpcBRL,
+        avgTicket: avgTicketBRL,
+        status,
+        healthScore,
+      } as EnrichedProduct;
+    });
+  }, [products, history, rates, fixedCostsTotal]); // ✅ Corrigido
+
+  // ============================================================
+  // 🔍 FILTRAGEM E ORDENAÇÃO
+  // ============================================================
+  const filteredAndSortedProducts: EnrichedProduct[] = useMemo(() => {
+    let filtered = enrichedProducts;
+
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (p) =>
+          p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.nicho.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.market.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    if (filterStatus !== "all") {
+      filtered = filtered.filter((p) => {
+        if (filterStatus === "profitable") return p.profit > 0;
+        if (filterStatus === "negative") return p.profit < 0;
+        if (filterStatus === "neutral") return p.profit === 0;
+        return true;
+      });
+    }
+
+    if (filterNicho !== "all") {
+      filtered = filtered.filter((p) => p.nicho === filterNicho);
+    }
+
+    filtered.sort((a, b) => {
+      const aVal = a[sortField as keyof EnrichedProduct];
+      const bVal = b[sortField as keyof EnrichedProduct];
+
+      if (typeof aVal === "string" && typeof bVal === "string") {
+        return sortDirection === "asc"
+          ? aVal.localeCompare(bVal)
+          : bVal.localeCompare(aVal);
+      }
+
+      return sortDirection === "asc"
+        ? (aVal as number) - (bVal as number)
+        : (bVal as number) - (aVal as number);
+    });
+
+    return filtered;
+  }, [
+    enrichedProducts,
+    searchTerm,
+    filterStatus,
+    filterNicho,
+    sortField,
+    sortDirection,
+  ]);
+
+  // ============================================================
+  // 📊 TOTAIS GLOBAIS (CONVERTIDOS PARA BRL)
+  // ============================================================
+  const totalSpendBRL = enrichedProducts.reduce(
+    (acc, p) => acc + (p.spendBRL || 0),
+    0
+  );
+  const totalRevenueBRL = enrichedProducts.reduce(
+    (acc, p) => acc + (p.revenueBRL || 0),
+    0
+  );
+  const totalFixedCostsBRL = enrichedProducts.reduce((acc, p) => {
+    return acc + (p.campaignCount > 0 ? p.fixedCostsBRL || 0 : 0);
+  }, 0);
+
+  const totalProfitBRL = totalRevenueBRL - totalSpendBRL - totalFixedCostsBRL;
+
+  const uniqueGlobalCampaigns = new Set(
+    history.map((h) => h.campaignId).filter(Boolean)
+  );
+  const totalCampaigns =
+    uniqueGlobalCampaigns.size > 0
+      ? uniqueGlobalCampaigns.size
+      : history.length > 0
+      ? products.length
+      : 0;
+
+  const totalInvestmentBRL = totalSpendBRL + totalFixedCostsBRL;
+  const avgROI =
+    totalInvestmentBRL > 0 ? (totalProfitBRL / totalInvestmentBRL) * 100 : 0;
+
+  const uniqueNichos = Array.from(new Set(products.map((p) => p.nicho)));
+  const top3 = [...enrichedProducts]
+    .sort((a, b) => (b.profit || 0) - (a.profit || 0))
+    .slice(0, 3);
+  const bottom3 = [...enrichedProducts]
+    .sort((a, b) => (a.profit || 0) - (b.profit || 0))
+    .slice(0, 3);
+
+  const selectedProduct: EnrichedProduct | undefined = enrichedProducts.find(
+    (p) => p.id === selectedProductId
+  );
+
+  // ============================================================
+  // 🎨 FUNÇÕES AUXILIARES
+  // ============================================================
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDirection("desc");
+    }
+  };
+
+  const getStatusColor = (status: EnrichedProduct["status"]) => {
+    switch (status) {
+      case "excellent":
+        return "from-green-400 to-emerald-500";
+      case "good":
+        return "from-blue-400 to-cyan-500";
+      case "warning":
+        return "from-yellow-400 to-orange-400";
+      case "danger":
+        return "from-red-400 to-pink-500";
+      default:
+        return "from-gray-400 to-gray-500";
+    }
+  };
+
+  const getStatusBadge = (status: EnrichedProduct["status"]) => {
+    switch (status) {
+      case "excellent":
+        return {
+          icon: <Award size={14} />,
+          text: "🏆 Excelente",
+          class: "bg-green-100 text-green-700",
+        };
+      case "good":
+        return {
+          icon: <CheckCircle size={14} />,
+          text: "✅ Bom",
+          class: "bg-blue-100 text-blue-700",
+        };
+      case "warning":
+        return {
+          icon: <AlertCircle size={14} />,
+          text: "⚠️ Atenção",
+          class: "bg-yellow-100 text-yellow-700",
+        };
+      case "danger":
+        return {
+          icon: <XCircle size={14} />,
+          text: "🚨 Crítico",
+          class: "bg-red-100 text-red-700",
+        };
+      default:
+        return {
+          icon: null,
+          text: "Neutro",
+          class: "bg-gray-100 text-gray-700",
+        };
+    }
+  };
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500">
+      {/* ============================================ */}
+      {/* 📊 HEADER - MÉTRICAS GLOBAIS               */}
+      {/* ============================================ */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Card 1: Produtos Ativos */}
+        <div className="bg-gradient-to-br from-blue-50 to-cyan-50 p-5 rounded-xl border border-blue-100 shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <Package className="text-blue-600" size={20} />
+            <span className="text-xs font-bold text-blue-700 uppercase">
+              Produtos Ativos
+            </span>
+          </div>
+          <div className="text-3xl font-black text-blue-900">
+            {products.length}
+          </div>
+          <div className="text-xs text-blue-600 mt-1">
+            {totalCampaigns} campanhas rodadas
+          </div>
+        </div>
+
+        {/* Card 2: Lucro Líquido (em BRL) */}
+        <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-5 rounded-xl border border-green-100 shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <DollarSign className="text-green-600" size={20} />
+            <span className="text-xs font-bold text-green-700 uppercase">
+              Lucro Líquido
+            </span>
+          </div>
+          <div
+            className={`text-3xl font-black ${
+              totalProfitBRL >= 0 ? "text-green-900" : "text-red-900"
+            }`}
+          >
+            R$ {totalProfitBRL.toFixed(2)}
+          </div>
+          <div className="text-xs text-green-600 mt-1">
+            Receita: R$ {totalRevenueBRL.toFixed(2)} | Ads: -R${" "}
+            {totalSpendBRL.toFixed(2)}
+            {totalFixedCostsBRL > 0 &&
+              ` | Fixos: -R$ ${totalFixedCostsBRL.toFixed(2)}`}
+          </div>
+        </div>
+
+        {/* Card 3: ROI Médio */}
+        <div className="bg-gradient-to-br from-purple-50 to-indigo-50 p-5 rounded-xl border border-purple-100 shadow-sm group relative">
+          <div className="flex items-center gap-2 mb-2">
+            <Target className="text-purple-600" size={20} />
+            <span className="text-xs font-bold text-purple-700 uppercase">
+              ROI Médio
+            </span>
+            <div className="relative inline-block">
+              <HelpCircle size={14} className="text-purple-400 cursor-help" />
+              <div className="invisible group-hover:visible absolute z-[9999] w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-xl -top-2 left-6 border border-gray-700">
+                <strong className="block mb-1">
+                  📊 ROI Médio do Portfolio
+                </strong>
+                <p className="text-gray-300 leading-relaxed">
+                  Fórmula:{" "}
+                  <code className="bg-gray-800 px-1 rounded">
+                    (Lucro Líquido / Investimento Total) × 100
+                  </code>
+                </p>
+                <p className="mt-2 text-yellow-300 text-[10px]">
+                  💡 Valores internacionais convertidos para BRL
+                </p>
+              </div>
+            </div>
+          </div>
+          <div
+            className={`text-3xl font-black ${
+              avgROI >= 0 ? "text-purple-900" : "text-red-900"
+            }`}
+          >
+            {avgROI.toFixed(1)}%
+          </div>
+          <div className="text-xs text-purple-600 mt-1">
+            Retorno sobre investimento total
+          </div>
+        </div>
+
+        {/* Card 4: Investimento Total */}
+        <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-5 rounded-xl border border-orange-100 shadow-sm group relative">
+          <div className="flex items-center gap-2 mb-2">
+            <Activity className="text-orange-600" size={20} />
+            <span className="text-xs font-bold text-orange-700 uppercase">
+              Investimento Total
+            </span>
+            <div className="relative inline-block">
+              <HelpCircle size={14} className="text-orange-400 cursor-help" />
+              <div className="invisible group-hover:visible absolute z-[9999] w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-xl -top-2 left-6 border border-gray-700">
+                <strong className="block mb-1">💰 Investimento Total</strong>
+                <p className="text-gray-300 leading-relaxed">
+                  Soma de <strong>todos os custos</strong> em BRL
+                </p>
+                <p className="mt-2 text-yellow-300 text-[10px]">
+                  💡 Produtos internacionais convertidos automaticamente
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="text-3xl font-black text-orange-900">
+            R$ {totalInvestmentBRL.toFixed(2)}
+          </div>
+          <div className="text-xs text-orange-600 mt-1">
+            Ads (R$ {totalSpendBRL.toFixed(2)}) + Fixos (R${" "}
+            {totalFixedCostsBRL.toFixed(2)})
+          </div>
+        </div>
+      </div>
+
+      {/* ============================================ */}
+      {/* 🏆 TOP 3 & BOTTOM 3                        */}
+      {/* ============================================ */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Top 3 Melhores */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <div className="flex items-center gap-2 mb-4">
+            <Award className="text-yellow-600" size={20} />
+            <h3 className="font-bold text-gray-900">
+              🏆 Top 3 Melhores Produtos
+            </h3>
+          </div>
+          <div className="space-y-3">
+            {top3.map((p, idx) => (
+              <div
+                key={p.id}
+                className="flex items-center gap-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200 hover:shadow-md transition-all"
+              >
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-lg ${
+                    idx === 0
+                      ? "bg-yellow-400 text-yellow-900"
+                      : idx === 1
+                      ? "bg-gray-300 text-gray-700"
+                      : "bg-orange-300 text-orange-800"
+                  }`}
+                >
+                  {idx + 1}
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-gray-900">{p.name}</p>
+                    <CurrencyBadge market={p.market} size="sm" />
+                  </div>
+                  <p className="text-xs text-gray-600">{p.nicho}</p>
+                </div>
+                <div className="text-right">
+                  <DualCurrencyDisplay
+                    value={p.profit || 0}
+                    market={p.market}
+                    currency={p.currency}
+                    rates={rates}
+                    className="font-black text-green-600"
+                  />
+                  <p className="text-xs text-gray-600">
+                    ROI: {p.roi.toFixed(0)}%
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Bottom 3 */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <div className="flex items-center gap-2 mb-4">
+            <AlertTriangle className="text-red-600" size={20} />
+            <h3 className="font-bold text-gray-900">
+              ⚠️ Produtos que Precisam Atenção
+            </h3>
+          </div>
+          <div className="space-y-3">
+            {bottom3.map((p) => (
+              <div
+                key={p.id}
+                className="flex items-center gap-3 p-3 bg-gradient-to-r from-red-50 to-orange-50 rounded-lg border border-red-200 hover:shadow-md transition-all"
+              >
+                <div className="w-10 h-10 rounded-full bg-red-500 text-white flex items-center justify-center font-black text-lg">
+                  !
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-gray-900">{p.name}</p>
+                    <CurrencyBadge market={p.market} size="sm" />
+                  </div>
+                  <p className="text-xs text-gray-600">{p.nicho}</p>
+                </div>
+                <div className="text-right">
+                  <DualCurrencyDisplay
+                    value={p.profit || 0}
+                    market={p.market}
+                    currency={p.currency}
+                    rates={rates}
+                    className="font-black text-red-600"
+                  />
+                  <p className="text-xs text-gray-600">
+                    ROI: {p.roi.toFixed(0)}%
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ============================================ */}
+      {/* 🔍 ANÁLISE DETALHADA DO PRODUTO            */}
+      {/* ============================================ */}
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 overflow-visible">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+          <h3 className="font-bold text-gray-800 flex items-center gap-2">
+            <Search size={20} className="text-blue-600" /> Análise Detalhada do
+            Produto
+          </h3>
+          <div className="flex items-center gap-3">
+            <select
+              className="p-2.5 border border-gray-300 rounded-lg bg-white text-gray-900 min-w-[250px] font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+              value={selectedProductId}
+              onChange={(e) => setSelectedProductId(e.target.value)}
+            >
+              <option value="">Selecione um produto...</option>
+              {enrichedProducts.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} - {p.nicho}
+                </option>
+              ))}
+            </select>
+            {selectedProduct && (
+              <button
+                onClick={() => setSelectedProductId("")}
+                className="text-sm text-red-500 hover:text-red-700 font-medium flex items-center gap-1 whitespace-nowrap"
+              >
+                <XCircle size={14} /> Fechar
+              </button>
+            )}
+          </div>
+        </div>
+
+        {selectedProduct ? (
+          <div
+            className={`bg-gradient-to-br ${getStatusColor(
+              selectedProduct.status
+            )} bg-opacity-10 rounded-xl p-6 border-2 overflow-visible ${
+              selectedProduct.status === "excellent"
+                ? "border-green-300"
+                : selectedProduct.status === "good"
+                ? "border-blue-300"
+                : selectedProduct.status === "warning"
+                ? "border-yellow-300"
+                : "border-red-300"
+            } animate-in fade-in zoom-in duration-300`}
+          >
+            {/* Header do Produto Selecionado */}
+            <div className="flex justify-between items-start mb-6">
+              <div className="flex items-center gap-4">
+                <div
+                  className={`bg-gradient-to-br ${getStatusColor(
+                    selectedProduct.status
+                  )} p-3 rounded-lg text-white shadow-md`}
+                >
+                  <Archive size={28} />
+                </div>
+                <div>
+                  <h4 className="font-black text-2xl text-gray-900 flex items-center gap-3 mb-2 flex-wrap">
+                    {selectedProduct.name}
+                    <span
+                      className={`text-xs font-bold px-3 py-1 rounded-full ${
+                        getStatusBadge(selectedProduct.status).class
+                      } flex items-center gap-1`}
+                    >
+                      {getStatusBadge(selectedProduct.status).icon}
+                      {getStatusBadge(selectedProduct.status).text}
+                    </span>
+                    <CurrencyBadge market={selectedProduct.market} size="md" />
+                    <ExchangeRateTooltip
+                      market={selectedProduct.market}
+                      rates={rates}
+                    />
+                  </h4>
+                  <div className="flex items-center gap-3 text-sm text-gray-600">
+                    <span className="font-bold">{selectedProduct.nicho}</span>
+                    <span>•</span>
+                    <span>{selectedProduct.market}</span>
+                    <span>•</span>
+                    <span
+                      className={`px-2 py-0.5 rounded ${
+                        selectedProduct.funnelStage === "fundo"
+                          ? "bg-blue-100 text-blue-700"
+                          : "bg-purple-100 text-purple-700"
+                      }`}
+                    >
+                      {selectedProduct.funnelStage === "fundo"
+                        ? "🎯 Fundo"
+                        : "📣 Topo"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => onSelectProductForAnalysis(selectedProduct)}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 flex items-center gap-2 shadow-md transition-all hover:scale-105"
+              >
+                <BarChart2 size={16} /> Abrir Análise Completa
+              </button>
+            </div>
+
+            {/* Grid de Métricas - COM CONVERSÃO DUAL */}
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-4">
+              {/* Investimento */}
+              <div className="bg-white/80 backdrop-blur-sm p-3 rounded-lg shadow-sm border border-gray-200">
+                <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">
+                  💰 Investimento
+                </div>
+                <DualCurrencyDisplay
+                  value={
+                    selectedProduct.market !== "BR"
+                      ? selectedProduct.spend + selectedProduct.fixedCosts
+                      : selectedProduct.spendBRL + selectedProduct.fixedCostsBRL
+                  }
+                  market={selectedProduct.market}
+                  rates={rates}
+                />
+              </div>
+
+              {/* Receita */}
+              <div className="bg-white/80 backdrop-blur-sm p-3 rounded-lg shadow-sm border border-gray-200">
+                <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">
+                  📈 Receita
+                </div>
+                <DualCurrencyDisplay
+                  value={
+                    selectedProduct.market !== "BR"
+                      ? selectedProduct.revenue
+                      : selectedProduct.revenueBRL
+                  }
+                  market={selectedProduct.market}
+                  rates={rates}
+                />
+              </div>
+
+              {/* Lucro */}
+              <div className="bg-white/80 backdrop-blur-sm p-3 rounded-lg shadow-sm border border-gray-200">
+                <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">
+                  💵 Lucro
+                </div>
+                <DualCurrencyDisplay
+                  value={
+                    selectedProduct.market !== "BR"
+                      ? selectedProduct.profit /
+                        rates[getCurrencyFromMarket(selectedProduct.market)]
+                      : selectedProduct.profit
+                  }
+                  market={selectedProduct.market}
+                  rates={rates}
+                  className={
+                    selectedProduct.profit >= 0
+                      ? "font-bold text-green-600"
+                      : "font-bold text-red-600"
+                  }
+                />
+              </div>
+
+              {/* ROI */}
+              <div className="bg-white/80 backdrop-blur-sm p-3 rounded-lg shadow-sm border border-gray-200">
+                <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">
+                  📊 ROI
+                </div>
+                <div
+                  className={`font-bold text-lg ${
+                    selectedProduct.roi >= 0 ? "text-blue-600" : "text-red-600"
+                  }`}
+                >
+                  {selectedProduct.roi.toFixed(1)}%
+                </div>
+              </div>
+
+              {/* CR */}
+              <div className="bg-white/80 backdrop-blur-sm p-3 rounded-lg shadow-sm border border-gray-200">
+                <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">
+                  🎯 CR
+                </div>
+                <div className="font-bold text-gray-900 text-lg">
+                  {selectedProduct.cr.toFixed(2)}%
+                </div>
+              </div>
+
+              {/* CPC */}
+              <div className="bg-white/80 backdrop-blur-sm p-3 rounded-lg shadow-sm border border-gray-200">
+                <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">
+                  👆 CPC
+                </div>
+                <DualCurrencyDisplay
+                  value={
+                    selectedProduct.market !== "BR"
+                      ? selectedProduct.cpc /
+                        rates[getCurrencyFromMarket(selectedProduct.market)]
+                      : selectedProduct.cpc
+                  }
+                  market={selectedProduct.market}
+                  rates={rates}
+                />
+              </div>
+
+              {/* Conversões */}
+              <div className="bg-white/80 backdrop-blur-sm p-3 rounded-lg shadow-sm border border-gray-200">
+                <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">
+                  🛒 Conversões
+                </div>
+                <div className="font-bold text-gray-900 text-lg">
+                  {selectedProduct.conversions}
+                </div>
+              </div>
+
+              {/* ROAS */}
+              <div className="bg-white/80 backdrop-blur-sm p-3 rounded-lg shadow-sm border border-gray-200">
+                <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">
+                  💹 ROAS
+                </div>
+                <div className="font-bold text-gray-900 text-lg">
+                  {selectedProduct.roas.toFixed(2)}x
+                </div>
+              </div>
+
+              {/* Campanhas */}
+              <div className="bg-white/80 backdrop-blur-sm p-3 rounded-lg shadow-sm border border-gray-200">
+                <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">
+                  📊 Campanhas
+                </div>
+                <div className="font-bold text-gray-900 text-lg">
+                  {selectedProduct.campaignCount}
+                </div>
+              </div>
+
+              {/* Ticket Médio */}
+              <div className="bg-white/80 backdrop-blur-sm p-3 rounded-lg shadow-sm border border-gray-200">
+                <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">
+                  🎫 Ticket Médio
+                </div>
+                <DualCurrencyDisplay
+                  value={
+                    selectedProduct.market !== "BR"
+                      ? selectedProduct.avgTicket /
+                        rates[getCurrencyFromMarket(selectedProduct.market)]
+                      : selectedProduct.avgTicket
+                  }
+                  market={selectedProduct.market}
+                  rates={rates}
+                />
+              </div>
+            </div>
+
+            {/* Health Score */}
+            <div className="bg-white/80 backdrop-blur-sm p-4 rounded-lg border border-gray-200">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-bold text-gray-700">
+                  Health Score
+                </span>
+                <span
+                  className={`text-2xl font-black ${
+                    selectedProduct.healthScore >= 80
+                      ? "text-green-600"
+                      : selectedProduct.healthScore >= 60
+                      ? "text-yellow-600"
+                      : selectedProduct.healthScore >= 40
+                      ? "text-orange-600"
+                      : "text-red-600"
+                  }`}
+                >
+                  {selectedProduct.healthScore}
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-700 rounded-full ${
+                    selectedProduct.healthScore >= 80
+                      ? "bg-gradient-to-r from-green-500 to-emerald-600"
+                      : selectedProduct.healthScore >= 60
+                      ? "bg-gradient-to-r from-yellow-500 to-orange-500"
+                      : selectedProduct.healthScore >= 40
+                      ? "bg-gradient-to-r from-orange-500 to-red-500"
+                      : "bg-gradient-to-r from-red-500 to-pink-600"
+                  }`}
+                  style={{ width: `${selectedProduct.healthScore}%` }}
+                ></div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-12 text-gray-400 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+            <Search className="mx-auto mb-3 text-gray-300" size={40} />
+            <p className="font-medium">
+              Selecione um produto para ver análise detalhada
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* ============================================ */}
+      {/* 🔍 FILTROS & BUSCA                         */}
+      {/* ============================================ */}
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+        <div className="flex items-center gap-2 mb-4">
+          <Filter className="text-indigo-600" size={20} />
+          <h3 className="font-bold text-gray-900">Filtros & Busca</h3>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+          <div className="relative">
+            <Search
+              className="absolute left-3 top-2.5 text-gray-400"
+              size={18}
+            />
+            <input
+              type="text"
+              placeholder="Buscar produto, nicho..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2 w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-gray-900"
+            />
+          </div>
+
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value as FilterStatus)}
+            className="p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-gray-900 font-medium"
+          >
+            <option value="all">Todos os Status</option>
+            <option value="profitable">✅ Lucrativos</option>
+            <option value="negative">🚨 No Prejuízo</option>
+            <option value="neutral">⚪ Neutros</option>
+          </select>
+
+          <select
+            value={filterNicho}
+            onChange={(e) => setFilterNicho(e.target.value)}
+            className="p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-gray-900 font-medium"
+          >
+            <option value="all">Todos os Nichos</option>
+            {uniqueNichos.map((nicho) => (
+              <option key={nicho} value={nicho}>
+                {nicho}
+              </option>
+            ))}
+          </select>
+
+          <button
+            onClick={() => {
+              setSearchTerm("");
+              setFilterStatus("all");
+              setFilterNicho("all");
+            }}
+            className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+          >
+            Limpar Filtros
+          </button>
+        </div>
+
+        <div className="text-sm text-gray-600">
+          Mostrando <strong>{filteredAndSortedProducts.length}</strong> de{" "}
+          <strong>{products.length}</strong> produtos
+        </div>
+      </div>
+
+      {/* ============================================ */}
+      {/* 📁 LISTA DE PRODUTOS                       */}
+      {/* ============================================ */}
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="font-bold text-gray-800 flex items-center gap-2">
+            <FolderOpen size={20} className="text-yellow-500" /> Minha Pasta de
+            Produtos
+          </h3>
+          <div className="flex gap-2 text-xs">
+            <button
+              onClick={() => handleSort("profit")}
+              className={`px-3 py-1.5 rounded ${
+                sortField === "profit"
+                  ? "bg-indigo-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              Ordenar por Lucro{" "}
+              {sortField === "profit" && (sortDirection === "asc" ? "↑" : "↓")}
+            </button>
+            <button
+              onClick={() => handleSort("roi")}
+              className={`px-3 py-1.5 rounded ${
+                sortField === "roi"
+                  ? "bg-indigo-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              Ordenar por ROI{" "}
+              {sortField === "roi" && (sortDirection === "asc" ? "↑" : "↓")}
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-h-[600px] overflow-y-auto pr-2">
+          {filteredAndSortedProducts.map((p) => {
+            const badge = getStatusBadge(p.status);
+            return (
+              <div
+                key={p.id}
+                className={`group relative bg-gradient-to-br from-white to-gray-50 border-2 rounded-xl p-5 hover:shadow-lg hover:border-indigo-300 transition-all duration-300 cursor-pointer ${
+                  selectedProductId === p.id
+                    ? "border-indigo-500 shadow-lg ring-2 ring-indigo-200"
+                    : "border-gray-200"
+                }`}
+                onClick={() => setSelectedProductId(p.id)}
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-start gap-3 flex-1">
+                    <div
+                      className={`bg-gradient-to-br ${getStatusColor(
+                        p.status
+                      )} p-3 rounded-lg text-white shadow-md`}
+                    >
+                      <Archive size={24} />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-black text-gray-900 text-lg mb-1 flex items-center gap-2 flex-wrap">
+                        {p.name}
+                        <CurrencyBadge market={p.market} size="sm" />
+                      </h4>
+                      <div className="flex items-center gap-2 text-xs text-gray-600">
+                        <span className="font-semibold">{p.nicho}</span>
+                        <span>•</span>
+                        <span>{p.market}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs font-bold ${badge.class} flex items-center gap-1 whitespace-nowrap`}
+                  >
+                    {badge.icon}
+                    {badge.text}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  {/* Lucro com Conversão Dual */}
+                  <div className="bg-white p-3 rounded-lg border border-gray-200 text-center">
+                    <div className="text-[10px] text-gray-500 uppercase font-bold">
+                      Lucro
+                    </div>
+                    <DualCurrencyDisplay
+                      value={
+                        p.market !== "BR"
+                          ? p.profit / rates[getCurrencyFromMarket(p.market)]
+                          : p.profit
+                      }
+                      market={p.market}
+                      rates={rates}
+                      className={`font-black text-sm ${
+                        p.profit >= 0 ? "text-green-600" : "text-red-600"
+                      }`}
+                      showOriginal={false}
+                    />
+                  </div>
+
+                  {/* ROI */}
+                  <div className="bg-white p-3 rounded-lg border border-gray-200 text-center">
+                    <div className="text-[10px] text-gray-500 uppercase font-bold">
+                      ROI
+                    </div>
+                    <div
+                      className={`font-black text-base ${
+                        p.roi >= 0 ? "text-blue-600" : "text-red-600"
+                      }`}
+                    >
+                      {p.roi.toFixed(0)}%
+                    </div>
+                  </div>
+
+                  {/* Campanhas */}
+                  <div className="bg-white p-3 rounded-lg border border-gray-200 text-center">
+                    <div className="text-[10px] text-gray-500 uppercase font-bold">
+                      Campanhas
+                    </div>
+                    <div className="font-black text-base text-gray-900">
+                      {p.campaignCount}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Health Score */}
+                <div className="mb-4">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[10px] font-bold text-gray-500 uppercase">
+                      Health Score
+                    </span>
+                    <span
+                      className={`text-sm font-black ${
+                        p.healthScore >= 80
+                          ? "text-green-600"
+                          : p.healthScore >= 60
+                          ? "text-yellow-600"
+                          : p.healthScore >= 40
+                          ? "text-orange-600"
+                          : "text-red-600"
+                      }`}
+                    >
+                      {p.healthScore}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-700 ${
+                        p.healthScore >= 80
+                          ? "bg-green-500"
+                          : p.healthScore >= 60
+                          ? "bg-yellow-500"
+                          : p.healthScore >= 40
+                          ? "bg-orange-500"
+                          : "bg-red-500"
+                      }`}
+                      style={{ width: `${p.healthScore}%` }}
+                    ></div>
+                  </div>
+                </div>
+
+                {/* Botões de Ação */}
+                <div className="flex gap-2 pt-3 border-t border-gray-200">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectProductForAnalysis(p);
+                    }}
+                    className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 flex items-center justify-center gap-2 transition-all hover:scale-105"
+                  >
+                    <BarChart2 size={14} /> Análise
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteProduct(p.id);
+                    }}
+                    className="bg-red-50 text-red-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-red-100 flex items-center justify-center gap-2 transition-all"
+                    title="Excluir Produto"
+                  >
+                    <Trash2 size={14} /> Excluir
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Estado Vazio */}
+          {filteredAndSortedProducts.length === 0 && (
+            <div className="col-span-2 text-center py-16 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+              <FolderOpen size={48} className="mx-auto text-gray-300 mb-3" />
+              <p className="text-gray-500 font-medium text-lg mb-2">
+                {products.length === 0
+                  ? "Sua pasta está vazia"
+                  : "Nenhum produto encontrado"}
+              </p>
+              <p className="text-sm text-gray-400">
+                {products.length === 0
+                  ? 'Vá em "Mapeamento" e salve seu primeiro produto'
+                  : "Tente ajustar os filtros"}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ============================================ */}
+      {/* ⚡ OTIMIZADORES DE PORTFÓLIO               */}
+      {/* ============================================ */}
+      <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-8 rounded-xl text-white shadow-xl border border-slate-700">
+        <div className="flex items-center gap-3 mb-6">
+          <Zap className="text-yellow-400 animate-pulse" size={28} />
+          <h3 className="text-2xl font-bold">Otimizadores de Portfólio</h3>
+        </div>
+
+        {/* Seletor de Método */}
+        <div className="mb-6">
+          <label className="text-sm text-gray-300 mb-3 block font-semibold">
+            Escolha o Método de Otimização:
+          </label>
+          <select
+            value={optimizationMethod}
+            onChange={(e) =>
+              setOptimizationMethod(e.target.value as OptimizationMethod)
+            }
+            className="w-full p-3 border-2 border-slate-600 rounded-lg bg-slate-700 text-white font-bold focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 outline-none transition-all"
+          >
+            <option value="simple">
+              📊 Distribuição Equilibrada (Iniciante)
+            </option>
+            <option value="simplex">🎯 Simplex Otimizado (Avançado)</option>
+          </select>
+        </div>
+
+        {/* Info Box do Método */}
+        {optimizationMethod === "simple" ? (
+          <div className="bg-blue-900/30 border-l-4 border-blue-500 p-4 rounded-r-lg mb-6 text-sm text-blue-100">
+            <strong className="flex items-center gap-2 mb-2">
+              <Info size={16} /> 📊 Distribuição Equilibrada
+            </strong>
+            <p className="leading-relaxed">
+              Distribui o orçamento proporcionalmente ao ROI de cada produto.
+              Simples e eficaz!
+              <strong className="block mt-2">✅ Ideal para:</strong> Quem está
+              começando ou quer uma distribuição rápida e balanceada.
+            </p>
+            <p className="mt-2 text-blue-200 text-xs">
+              💡 Produtos internacionais são convertidos automaticamente para
+              BRL nos cálculos
+            </p>
+          </div>
+        ) : (
+          <div className="bg-purple-900/30 border-l-4 border-purple-500 p-4 rounded-r-lg mb-6 text-sm text-purple-100">
+            <strong className="flex items-center gap-2 mb-2">
+              <Info size={16} /> 🎯 Simplex Otimizado
+            </strong>
+            <p className="leading-relaxed">
+              Algoritmo matemático que maximiza o lucro total considerando
+              histórico, confiança nos dados e capacidade de cada produto.
+              <strong className="block mt-2">✅ Ideal para:</strong> Quem tem
+              histórico (5+ campanhas) e quer maximizar lucro com recomendações
+              específicas.
+            </p>
+            <p className="mt-2 text-purple-200 text-xs">
+              💡 Todos os cálculos são feitos em BRL (conversão automática
+              aplicada)
+            </p>
+          </div>
+        )}
+
+        {/* Input de Budget + Botões */}
+        <div className="flex flex-col md:flex-row gap-4 items-end mb-6">
+          <div className="flex-1 w-full">
+            <label className="text-sm text-gray-300 mb-2 block font-semibold">
+              Orçamento Mensal Disponível (R$)
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-3 text-gray-400 font-bold">
+                R$
+              </span>
+              <input
+                type="number"
+                value={simplexBudget}
+                onChange={(e) => setSimplexBudget(parseFloat(e.target.value))}
+                className="bg-slate-700 border-2 border-slate-600 rounded-lg p-3 pl-10 w-full text-white placeholder-gray-500 focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 outline-none transition-all font-bold"
+                placeholder="1000.00"
+              />
+            </div>
+            <p className="text-xs text-gray-400 mt-1">
+              💡 Insira seu orçamento em Reais (BRL)
+            </p>
+          </div>
+
+          <button
+            onClick={handleOptimize}
+            className="w-full md:w-auto bg-gradient-to-r from-yellow-500 to-orange-500 text-slate-900 px-8 py-3 rounded-lg font-black hover:from-yellow-400 hover:to-orange-400 transition-all flex items-center justify-center gap-2 shadow-lg hover:scale-105"
+          >
+            <TrendingUp size={20} /> Calcular Alocação Ótima
+          </button>
+
+          <button
+            onClick={() => {
+              setAllocation(null);
+              setOptimizationMethod("simple");
+              setSimplexBudget(1000);
+            }}
+            className="w-full md:w-auto bg-red-600 text-white px-6 py-3 rounded-lg font-black hover:bg-red-700 transition-all flex items-center justify-center gap-2 shadow-lg"
+          >
+            🔄 Limpar Resultados
+          </button>
+        </div>
+
+        {/* Resultados da Otimização */}
+        {allocation && allocation.allocation && (
+          <div className="bg-slate-700/50 rounded-xl p-6 animate-in slide-in-from-bottom-4 border-2 border-slate-600 backdrop-blur-sm">
+            {/* Aviso Simplex */}
+            {optimizationMethod === "simplex" && (
+              <div className="mb-6 bg-purple-900/30 border-l-4 border-purple-500 p-4 rounded-r-lg">
+                <div className="flex items-start gap-3">
+                  <Info className="text-purple-400 mt-0.5" size={20} />
+                  <div>
+                    <strong className="text-purple-300 block mb-1">
+                      🎯 Modo Conservador Ativo
+                    </strong>
+                    <p className="text-sm text-purple-200 leading-relaxed">
+                      O Simplex só investe onde tem{" "}
+                      <strong>
+                        confiança nos dados e ROI positivo consistente
+                      </strong>
+                      .
+                    </p>
+                    <div className="mt-3 bg-purple-950/50 p-2 rounded border border-purple-800">
+                      <p className="text-xs text-purple-200">
+                        <strong>Por que pode sobrar budget?</strong>
+                        <br />• Histórico limitado (menos campanhas = menos confiança)
+                        <br />• ROI muito baixo ou inconsistente
+                        <br />• Produto já atingiu capacidade máxima recomendada
+                        <br />• Risco maior que o retorno esperado
+                      </p>
+                    </div>
+                    <p className="text-xs text-purple-300 mt-2">
+                      💡 <strong>Dica:</strong> Se quiser distribuir todo o
+                      budget, use o modo <strong>Simples</strong>.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Mensagem customizada */}
+            {allocation.message && (
+              <div className="mb-6 bg-slate-800 p-4 rounded-lg border border-slate-600">
+                <p className="text-white font-medium">{allocation.message}</p>
+              </div>
+            )}
+
+            {/* Métricas Resumo - SIMPLEX */}
+            {optimizationMethod === "simplex" &&
+              Array.isArray(allocation.allocation) &&
+              allocation.allocation.length > 0 && (
+                <div className="grid grid-cols-3 gap-4 mb-6 bg-slate-800 p-5 rounded-xl border border-slate-600">
+                  <div>
+                    <div className="text-xs text-gray-400 uppercase font-bold mb-2">
+                      Budget Total
+                    </div>
+                    <div className="text-2xl font-black text-white">
+                      R$ {(allocation.totalBudget || 0).toFixed(2)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-400 uppercase font-bold mb-2">
+                      Lucro Esperado
+                    </div>
+                    <div className="text-2xl font-black text-green-400">
+                      R$ {(allocation.totalExpectedProfit || 0).toFixed(2)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-400 uppercase font-bold mb-2">
+                      ROI Médio
+                    </div>
+                    <div className="text-2xl font-black text-yellow-400">
+                      {(allocation.efficiency || 0).toFixed(1)}%
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            {/* Métricas Resumo - SIMPLES */}
+            {optimizationMethod === "simple" &&
+              Array.isArray(allocation.allocation) &&
+              allocation.allocation.length > 0 && (
+                <div className="grid grid-cols-3 gap-4 mb-6 bg-slate-800 p-5 rounded-xl border border-slate-600">
+                  <div>
+                    <div className="text-xs text-gray-400 uppercase font-bold mb-2">
+                      Budget Alocado
+                    </div>
+                    <div className="text-2xl font-black text-white">
+                      R${" "}
+                      {(Array.isArray(allocation.allocation)
+                        ? allocation.allocation.reduce(
+                            (total, item) =>
+                              total +
+                              (item.allocatedBudget || item.amount || 0),
+                            0
+                          )
+                        : 0
+                      ).toFixed(2)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-400 uppercase font-bold mb-2">
+                      Lucro Esperado
+                    </div>
+                    <div className="text-2xl font-black text-green-400">
+                      R$ {allocation.totalProfit?.toFixed(2) || "0.00"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-400 uppercase font-bold mb-2">
+                      ROI Médio
+                    </div>
+                    <div className="text-2xl font-black text-yellow-400">
+                      {allocation.efficiency?.toFixed(1) || "0.0"}%
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            {/* Header da Lista */}
+            <div className="mb-4 flex items-center justify-between bg-slate-800/50 p-3 rounded-lg border border-slate-600">
+              <div className="flex items-center gap-2">
+                <Package className="text-blue-400" size={16} />
+                <span className="text-sm text-gray-300">
+                  Produtos analisados:
+                </span>
+              </div>
+              <span className="font-black text-white text-lg">
+                {products.length}
+              </span>
+            </div>
+
+            <h4 className="font-bold mb-6 text-yellow-400 flex items-center gap-2 text-lg">
+              <Target /> Alocação Recomendada
+            </h4>
+
+            {/* Lista de Alocações */}
+            <div className="space-y-3">
+              {(allocation?.allocation || [])
+                .filter((item: AllocationItem | undefined) => item && item.productName)
+                .map((item: AllocationItem, idx: number) => (
+                  <div
+                    key={idx}
+                    className="p-5 bg-slate-800 rounded-xl border-2 border-slate-600 shadow-lg hover:border-slate-500 transition-all"
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex-1">
+                        <div className="font-bold text-white text-xl mb-1">
+                          {item.productName}
+                        </div>
+
+                        {/* Recomendações Simplex */}
+                        {optimizationMethod === "simplex" &&
+                          item.recommendation && (
+                            <>
+                              {item.recommendation === "AUMENTAR" && (
+                                <div className="flex items-center gap-2 text-sm text-blue-400 font-semibold mb-1">
+                                  <TrendingUp size={16} />
+                                  Aumentar em {item.changePercent?.toFixed(0)}%
+                                  (de R$ {item.previousBudget?.toFixed(0)} → R${" "}
+                                  {item.allocatedBudget.toFixed(0)})
+                                </div>
+                              )}
+
+                              {item.recommendation === "REDUZIR" && (
+                                <div className="flex items-center gap-2 text-sm text-orange-400 font-semibold mb-1">
+                                  <TrendingDown size={16} />
+                                  Reduzir em{" "}
+                                  {Math.abs(item.changePercent || 0).toFixed(0)}
+                                  % (de R$ {item.previousBudget?.toFixed(0)} →
+                                  R$ {item.allocatedBudget.toFixed(0)})
+                                </div>
+                              )}
+
+                              {item.recommendation === "MANTER" && (
+                                <div className="flex items-center gap-2 text-sm text-green-400 font-semibold mb-1">
+                                  <CheckCircle size={16} />
+                                  Manter investimento (R${" "}
+                                  {item.previousBudget?.toFixed(0)})
+                                </div>
+                              )}
+
+                              {item.recommendation === "NOVO" && (
+                                <div className="flex items-center gap-2 text-sm text-purple-400 font-semibold mb-1">
+                                  ✨ Novo investimento recomendado
+                                </div>
+                              )}
+
+                              <div className="text-xs text-gray-400 mt-1">
+                                Confiança nos dados:{" "}
+                                <span
+                                  className={`font-bold ${
+                                    item.confidence === "Alta"
+                                      ? "text-green-400"
+                                      : item.confidence === "Média"
+                                      ? "text-yellow-400"
+                                      : "text-orange-400"
+                                  }`}
+                                >
+                                  {item.confidence}
+                                </span>
+                              </div>
+                            </>
+                          )}
+
+                        {/* Info Simples */}
+                        {optimizationMethod === "simple" && (
+                          <div className="text-xs text-green-400 font-mono mt-1">
+                            🎯 ROI Esperado:{" "}
+                            {item.expectedROI?.toFixed(1) || "0.0"}%
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Grid de Valores */}
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="bg-slate-700 p-3 rounded">
+                        <div className="text-xs text-gray-400 font-bold">
+                          Investir
+                        </div>
+                        <div className="font-bold text-white text-lg">
+                          R${" "}
+                          {(item.allocatedBudget || item.amount || 0).toFixed(
+                            2
+                          )}
+                        </div>
+                      </div>
+                      <div className="bg-slate-700 p-3 rounded">
+                        <div className="text-xs text-gray-400 font-bold">
+                          Lucro Esperado
+                        </div>
+                        <div className="font-bold text-green-400 text-lg">
+                          R$ {(item.expectedProfit || 0).toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+              {/* Estado Vazio - Nenhuma Alocação */}
+              {allocation &&
+                Array.isArray(allocation.allocation) &&
+                allocation.allocation.length === 0 && (
+                  <div className="bg-red-900/20 border-2 border-red-500 rounded-xl p-6">
+                    <div className="flex items-start gap-4">
+                      <AlertCircle className="text-red-400 mt-1" size={32} />
+                      <div>
+                        <strong className="text-red-300 text-lg block mb-2">
+                          ⚠️ Nenhuma alocação viável encontrada
+                        </strong>
+                        <p className="text-red-200 text-sm mb-3 leading-relaxed">
+                          {optimizationMethod === "simplex"
+                            ? "O Simplex é conservador e não encontrou produtos com confiança suficiente para investir com segurança."
+                            : "Nenhum produto apresentou ROI positivo suficiente para recomendar investimento."}
+                        </p>
+                        <div className="bg-red-950/50 p-3 rounded-lg border border-red-800">
+                          <strong className="text-red-300 text-sm block mb-2">
+                            💡 O que fazer:
+                          </strong>
+                          <ul className="text-sm text-red-200 space-y-1.5">
+                            {optimizationMethod === "simplex" ? (
+                              <>
+                                <li>
+                                  ✓ <strong>Use o modo Simples</strong> para
+                                  distribuir o budget mesmo com poucos dados
+                                </li>
+                                <li>
+                                  ✓ <strong>Cadastre mais campanhas</strong>{" "}
+                                  para aumentar a confiança nos dados
+                                </li>
+                                <li>
+                                  ✓ <strong>Melhore o ROI dos produtos</strong>{" "}
+                                  testando novas estratégias
+                                </li>
+                                <li>
+                                  ✓ <strong>Aumente o budget</strong> para dar
+                                  mais margem ao algoritmo
+                                </li>
+                              </>
+                            ) : (
+                              <>
+                                <li>
+                                  ✓ <strong>Revise seus produtos:</strong>{" "}
+                                  adicione produtos com ROI positivo
+                                </li>
+                                <li>
+                                  ✓ <strong>Cadastre mais campanhas</strong>{" "}
+                                  para ter dados mais precisos
+                                </li>
+                                <li>
+                                  ✓ <strong>Otimize suas campanhas</strong> para
+                                  melhorar o desempenho
+                                </li>
+                                <li>
+                                  ✓ <strong>Verifique os custos fixos</strong>{" "}
+                                  que podem estar impactando o ROI
+                                </li>
+                              </>
+                            )}
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+              {/* Reserva de Segurança */}
+              {allocation && allocation.remainingBudget > 0 && (
+                <div className="mt-4 p-5 bg-slate-800/30 rounded-xl border-2 border-slate-600 border-dashed">
+                  <div className="flex justify-between items-start mb-3">
+                    <span className="text-gray-300 font-semibold">
+                      💰 Reserva de Segurança (Não Alocada)
+                    </span>
+                    <span className="font-mono text-yellow-400 font-black text-xl">
+                      R$ {allocation.remainingBudget.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-700">
+                    <strong className="text-yellow-300 text-xs block mb-2">
+                      🔒 Por que sobrou dinheiro?
+                    </strong>
+                    <p className="text-xs text-gray-300 leading-relaxed">
+                      {optimizationMethod === "simplex" ? (
+                        <>
+                          O <strong>Simplex é conservador</strong> e só investe
+                          onde tem certeza de retorno positivo.
+                          <br />• <strong>Histórico limitado:</strong> Poucos
+                          dados = menor confiança
+                          <br />• <strong>Capacidade máxima:</strong> Produto já
+                          recebeu o máximo recomendado
+                          <br />• <strong>ROI insuficiente:</strong> Investir
+                          mais não compensaria o risco
+                          <span className="block mt-2 text-yellow-200">
+                            💡 <strong>Quer usar todo o budget?</strong> Mude
+                            para o modo <strong>Simples</strong>
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          Este valor não foi distribuído porque:
+                          <br />• Os produtos já receberam alocação proporcional
+                          ao ROI
+                          <br />• Investir mais não seria eficiente com os dados
+                          atuais
+                        </>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};

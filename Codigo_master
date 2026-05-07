@@ -1,0 +1,25 @@
+# Script de Dump Seguro
+$outputFile = "APP_ATUALIZADO.txt"
+$ignore = @("node_modules", ".git", "dist", "build", ".vscode")
+
+# Limpa arquivo anterior
+if (Test-Path $outputFile) { Remove-Item $outputFile }
+New-Item -Path $outputFile -ItemType File | Out-Null
+
+# Busca arquivos
+Get-ChildItem -Path "src" -Recurse -Include "*.ts", "*.tsx", "*.css" | 
+Where-Object { 
+    $path = $_.FullName
+    $shouldIgnore = $false
+    foreach ($i in $ignore) { if ($path -match "\\$i\\") { $shouldIgnore = $true; break } }
+    return -not $shouldIgnore
+} | 
+ForEach-Object {
+    Add-Content -Path $outputFile -Value "`n=========================================="
+    Add-Content -Path $outputFile -Value "ARQUIVO: $($_.Name)"
+    Add-Content -Path $outputFile -Value "CAMINHO: $($_.FullName)"
+    Add-Content -Path $outputFile -Value "==========================================`n"
+    Get-Content -Path $_.FullName | Add-Content -Path $outputFile
+}
+
+Write-Host "✅ SUCESSO! O arquivo $outputFile foi gerado e está pronto." -ForegroundColor Green

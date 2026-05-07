@@ -1,0 +1,609 @@
+﻿<!DOCTYPE html>
+
+<html class="light" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CPC Funnel Pro | Dashboard de Performance</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-background": "#0b1c30",
+                        "secondary-fixed": "#6ffbbe",
+                        "error": "#ba1a1a",
+                        "on-tertiary-fixed": "#40000d",
+                        "on-primary": "#ffffff",
+                        "inverse-primary": "#b4c5ff",
+                        "surface-tint": "#0052dc",
+                        "on-primary-fixed": "#00174b",
+                        "primary-container": "#0061ff",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "on-secondary-fixed-variant": "#005236",
+                        "inverse-surface": "#213145",
+                        "surface-container-low": "#eff4ff",
+                        "on-secondary-fixed": "#002113",
+                        "outline-variant": "#c2c6d9",
+                        "tertiary": "#af0034",
+                        "surface-container-lowest": "#ffffff",
+                        "outline": "#737687",
+                        "on-error-container": "#93000a",
+                        "on-surface": "#0b1c30",
+                        "surface-container": "#e5eeff",
+                        "on-error": "#ffffff",
+                        "surface-dim": "#cbdbf5",
+                        "background": "#f8f9ff",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-container": "#f1f2ff",
+                        "error-container": "#ffdad6",
+                        "tertiary-fixed": "#ffdadb",
+                        "on-tertiary-fixed-variant": "#92002a",
+                        "on-secondary": "#ffffff",
+                        "inverse-on-surface": "#eaf1ff",
+                        "surface-container-high": "#dce9ff",
+                        "tertiary-container": "#d42549",
+                        "surface-variant": "#d3e4fe",
+                        "on-surface-variant": "#424656",
+                        "secondary": "#006c49",
+                        "on-secondary-container": "#00714d",
+                        "on-tertiary-container": "#fff0ef",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "surface": "#f8f9ff",
+                        "secondary-fixed-dim": "#4edea3",
+                        "primary": "#004bca",
+                        "tertiary-fixed-dim": "#ffb2b7",
+                        "primary-fixed": "#dbe1ff",
+                        "surface-container-highest": "#d3e4fe",
+                        "secondary-container": "#6cf8bb",
+                        "surface-bright": "#f8f9ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "display": ["Manrope"],
+                        "body": ["Manrope"],
+                        "label": ["Manrope"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .ghost-border { border: 1px solid rgba(194, 198, 217, 0.2); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="bg-background text-on-surface antialiased">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full w-64 bg-slate-900 flex flex-col py-6 border-r border-slate-800 z-50">
+<div class="px-6 mb-10">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 bg-primary rounded flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-lg" style="font-variation-settings: 'FILL' 1;">analytics</span>
+</div>
+<div>
+<h1 class="text-lg font-black tracking-tight text-white uppercase">CPC Funnel Pro</h1>
+<p class="text-[10px] font-semibold tracking-widest text-slate-500 uppercase">Quantitative Architect</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 px-4 space-y-1">
+<!-- Active Tab: Dashboard -->
+<a class="flex items-center gap-3 px-4 py-3 text-white bg-slate-800/50 font-bold border-l-4 border-blue-500 transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-[20px]">dashboard</span>
+<span class="text-[11px] font-semibold tracking-widest uppercase">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-slate-200 hover:bg-slate-800/30 transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-[20px]">ads_click</span>
+<span class="text-[11px] font-semibold tracking-widest uppercase">Campanhas</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-slate-200 hover:bg-slate-800/30 transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-[20px]">filter_alt</span>
+<span class="text-[11px] font-semibold tracking-widest uppercase">Análise de Funil</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-slate-200 hover:bg-slate-800/30 transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-[20px]">payments</span>
+<span class="text-[11px] font-semibold tracking-widest uppercase">Receita</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-slate-200 hover:bg-slate-800/30 transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-[20px]">query_stats</span>
+<span class="text-[11px] font-semibold tracking-widest uppercase">Projeções</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-slate-200 hover:bg-slate-800/30 transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+<span class="text-[11px] font-semibold tracking-widest uppercase">Configurações</span>
+</a>
+</nav>
+<div class="px-4 pt-6 border-t border-slate-800/50 mt-auto">
+<button class="w-full py-3 bg-primary text-white text-[11px] font-bold tracking-widest uppercase rounded-lg mb-6 hover:brightness-110 transition-all active:scale-95">
+                Upgrade Enterprise
+            </button>
+<div class="space-y-1">
+<a class="flex items-center gap-3 px-4 py-2 text-slate-400 hover:text-slate-200 text-[11px] font-semibold tracking-widest uppercase" href="#">
+<span class="material-symbols-outlined text-[18px]">help</span>
+<span>Suporte</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2 text-slate-400 hover:text-slate-200 text-[11px] font-semibold tracking-widest uppercase" href="#">
+<span class="material-symbols-outlined text-[18px]">account_circle</span>
+<span>Conta</span>
+</a>
+</div>
+</div>
+</aside>
+<!-- TopAppBar -->
+<header class="fixed top-0 right-0 w-[calc(100%-16rem)] h-14 bg-white border-b border-slate-200 flex items-center justify-between px-8 z-40">
+<div class="flex items-center gap-4">
+<h2 class="text-[11px] font-black tracking-widest uppercase text-slate-900">Dashboard de Performance</h2>
+<div class="h-4 w-px bg-slate-200"></div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Status: Salvo</span>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex bg-surface-container-low p-0.5 rounded-lg border border-outline-variant/20">
+<button class="px-3 py-1 text-[10px] font-bold bg-white text-primary rounded-md shadow-sm">USD</button>
+<button class="px-3 py-1 text-[10px] font-bold text-slate-500">BRL</button>
+</div>
+<div class="flex items-center gap-3">
+<button class="p-2 text-slate-500 hover:bg-slate-50 rounded-full transition-colors">
+<span class="material-symbols-outlined text-[20px]">notifications</span>
+</button>
+<button class="p-2 text-slate-500 hover:bg-slate-50 rounded-full transition-colors">
+<span class="material-symbols-outlined text-[20px]">history</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-slate-200 overflow-hidden ml-2 border border-slate-300">
+<img class="w-full h-full object-cover" data-alt="professional male profile picture with neutral background and soft studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDaQ-y7Pd07qS_HRxPiAg2zvJnmsOckw2PozXEwJYU0h8kIppc1Ik5Tn38ubohES4vk06nbgyTh7FYJRmYJvVqrdgeT0hb2kY8As-oWNzFd4qh6pluPVhddGmNtc0v5tfAldbZr0NzLo4GfpWJ__0hVJmSMYcxzj1i2sd0HVgHkipD3S-fZNoCvm_TDft0gynr7X4jOGDVzcQ0Os2mwBE3DWkK_QJFND2f927cM3tKMX-znJh2Cs6eEnlm0DWsyXru_0mgJq-6JbvA"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="ml-64 mt-14 p-8 space-y-6 min-h-screen">
+<!-- Period Filter Bar -->
+<section class="bg-white rounded-2xl ghost-border p-4 flex items-center justify-between">
+<div class="flex items-center gap-6">
+<span class="text-[11px] font-semibold tracking-widest text-slate-400 uppercase">Período</span>
+<div class="flex gap-2">
+<button class="px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-slate-500 hover:bg-slate-50 rounded-full transition-colors">Hoje</button>
+<button class="px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-slate-500 hover:bg-slate-50 rounded-full transition-colors">7 dias</button>
+<button class="px-4 py-2 text-[11px] font-bold uppercase tracking-widest bg-slate-900 text-white rounded-full">30 dias</button>
+<button class="px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-slate-500 hover:bg-slate-50 rounded-full transition-colors">Todo período</button>
+<button class="px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-slate-500 border border-slate-200 rounded-full flex items-center gap-2">
+<span>Personalizado</span>
+<span class="material-symbols-outlined text-sm">calendar_today</span>
+</button>
+</div>
+</div>
+<button class="flex items-center gap-2 text-primary font-bold text-[11px] uppercase tracking-widest">
+<span class="material-symbols-outlined text-lg">download</span>
+                Exportar Relatório
+            </button>
+</section>
+<!-- KPI Cards Grid -->
+<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<!-- Receita Global -->
+<div class="bg-white rounded-xl ghost-border overflow-hidden flex flex-col p-6 border-t-4 border-secondary relative">
+<div class="flex justify-between items-start mb-2">
+<span class="text-[11px] font-semibold tracking-widest text-on-surface-variant uppercase">Receita Global</span>
+<span class="text-[10px] font-bold text-secondary bg-secondary-container/30 px-2 py-0.5 rounded">+12.3%</span>
+</div>
+<div class="mb-4">
+<span class="text-3xl font-black tracking-tight text-slate-900">R$ 18.450,00</span>
+</div>
+<div class="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
+<span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ads / Extra</span>
+<span class="text-[10px] font-black text-slate-600">R$ 15,2k / R$ 3,2k</span>
+</div>
+</div>
+<!-- Custo Total -->
+<div class="bg-white rounded-xl ghost-border overflow-hidden flex flex-col p-6 border-t-4 border-tertiary">
+<div class="flex justify-between items-start mb-2">
+<span class="text-[11px] font-semibold tracking-widest text-on-surface-variant uppercase">Custo Total</span>
+<span class="text-[10px] font-bold text-tertiary bg-tertiary-fixed-dim/30 px-2 py-0.5 rounded">+8.1%</span>
+</div>
+<div class="mb-4">
+<span class="text-3xl font-black tracking-tight text-slate-900">R$ 9.230,00</span>
+</div>
+<div class="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
+<span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ads / Fixos</span>
+<span class="text-[10px] font-black text-slate-600">R$ 7,1k / R$ 2,1k</span>
+</div>
+</div>
+<!-- Lucro Líquido -->
+<div class="bg-white rounded-xl ghost-border overflow-hidden flex flex-col p-6 border-t-4 border-secondary">
+<div class="flex justify-between items-start mb-2">
+<span class="text-[11px] font-semibold tracking-widest text-on-surface-variant uppercase">Lucro Líquido</span>
+<span class="text-[10px] font-bold text-secondary bg-secondary-container/30 px-2 py-0.5 rounded">+0.4%</span>
+</div>
+<div class="mb-4">
+<span class="text-3xl font-black tracking-tight text-secondary">R$ 9.220,00</span>
+</div>
+<div class="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
+<span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Margem / Status</span>
+<span class="text-[10px] font-black text-slate-600">50.1% / Estável</span>
+</div>
+</div>
+<!-- ROI Global -->
+<div class="bg-white rounded-xl ghost-border overflow-hidden flex flex-col p-6 border-t-4 border-primary">
+<div class="flex justify-between items-start mb-2">
+<span class="text-[11px] font-semibold tracking-widest text-on-surface-variant uppercase">ROI Global</span>
+<span class="material-symbols-outlined text-primary text-sm">trending_up</span>
+</div>
+<div class="mb-4">
+<span class="text-3xl font-black tracking-tight text-primary">99,9%</span>
+</div>
+<div class="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
+<span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">CPC Médio / CR</span>
+<span class="text-[10px] font-black text-slate-600">R$ 1,45 / 4.2%</span>
+</div>
+</div>
+</section>
+<!-- Secondary Metrics Section -->
+<section class="space-y-4">
+<div class="flex items-center justify-between">
+<button class="bg-surface-container-low px-4 py-2 rounded-full text-[11px] font-bold text-primary flex items-center gap-2 hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-sm">visibility</span>
+                    Ver métricas detalhadas
+                </button>
+</div>
+<div class="bg-slate-50/50 rounded-2xl p-6 border border-slate-200">
+<h3 class="text-[11px] font-black tracking-widest text-slate-400 uppercase mb-6">Métricas Detalhadas</h3>
+<div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+<!-- CR Global -->
+<div class="bg-white p-4 rounded-xl ghost-border flex flex-col items-center text-center">
+<span class="text-[10px] font-bold text-slate-400 uppercase tracking-tight mb-2">CR Global</span>
+<span class="text-lg font-black text-slate-900">4.12%</span>
+</div>
+<!-- CPC Médio -->
+<div class="bg-white p-4 rounded-xl ghost-border flex flex-col items-center text-center">
+<span class="text-[10px] font-bold text-slate-400 uppercase tracking-tight mb-2">CPC Médio</span>
+<span class="text-lg font-black text-slate-900">R$ 1,22</span>
+</div>
+<!-- Ticket Médio -->
+<div class="bg-white p-4 rounded-xl ghost-border flex flex-col items-center text-center">
+<span class="text-[10px] font-bold text-slate-400 uppercase tracking-tight mb-2">Ticket Médio</span>
+<span class="text-lg font-black text-slate-900">R$ 147</span>
+</div>
+<!-- Conversões -->
+<div class="bg-white p-4 rounded-xl ghost-border flex flex-col items-center text-center">
+<span class="text-[10px] font-bold text-slate-400 uppercase tracking-tight mb-2">Conversões</span>
+<span class="text-lg font-black text-slate-900">1.240</span>
+</div>
+<!-- Cliques -->
+<div class="bg-white p-4 rounded-xl ghost-border flex flex-col items-center text-center">
+<span class="text-[10px] font-bold text-slate-400 uppercase tracking-tight mb-2">Cliques</span>
+<span class="text-lg font-black text-slate-900">30.1k</span>
+</div>
+<!-- Burn/Dia -->
+<div class="bg-white p-4 rounded-xl ghost-border flex flex-col items-center text-center">
+<span class="text-[10px] font-bold text-slate-400 uppercase tracking-tight mb-2">Burn/Dia</span>
+<span class="text-lg font-black text-tertiary">R$ 307</span>
+</div>
+<!-- Campanhas -->
+<div class="bg-white p-4 rounded-xl ghost-border flex flex-col items-center text-center">
+<span class="text-[10px] font-bold text-slate-400 uppercase tracking-tight mb-2">Campanhas</span>
+<span class="text-lg font-black text-slate-900">12</span>
+</div>
+<!-- Produtos -->
+<div class="bg-white p-4 rounded-xl ghost-border flex flex-col items-center text-center">
+<span class="text-[10px] font-bold text-slate-400 uppercase tracking-tight mb-2">Produtos</span>
+<span class="text-lg font-black text-slate-900">8</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Monthly Projection -->
+<section class="bg-white rounded-2xl ghost-border overflow-hidden">
+<div class="px-8 py-5 flex items-center justify-between border-b border-slate-100">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary">analytics</span>
+<h3 class="text-[11px] font-black tracking-widest text-slate-900 uppercase">Projeção para Fim do Mês</h3>
+<div class="px-3 py-1 bg-secondary/10 rounded-full">
+<span class="text-[10px] font-black text-secondary uppercase">R$ 18.000 projetado</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-slate-400 cursor-pointer">expand_less</span>
+</div>
+<div class="p-8 grid grid-cols-1 md:grid-cols-4 gap-12">
+<div class="space-y-2">
+<span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Receita</span>
+<div class="text-2xl font-black text-slate-900">R$ 21.400</div>
+<div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+<div class="bg-secondary h-full" style="width: 85%"></div>
+</div>
+</div>
+<div class="space-y-2">
+<span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Custo</span>
+<div class="text-2xl font-black text-slate-900">R$ 10.100</div>
+<div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+<div class="bg-tertiary h-full" style="width: 45%"></div>
+</div>
+</div>
+<div class="space-y-2">
+<span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Lucro</span>
+<div class="text-2xl font-black text-slate-900">R$ 11.300</div>
+<div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+<div class="bg-secondary h-full" style="width: 70%"></div>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between items-end mb-1">
+<span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Meta</span>
+<span class="text-[10px] font-black text-primary">40.0%</span>
+</div>
+<div class="text-2xl font-black text-slate-900">R$ 45.000</div>
+<div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full" style="width: 40%"></div>
+</div>
+</div>
+</div>
+</section>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+<!-- Melhores Produtos -->
+<div class="bg-white rounded-2xl ghost-border p-6">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">stars</span>
+<h3 class="text-[11px] font-black tracking-widest text-slate-900 uppercase">Melhores Produtos</h3>
+</div>
+<div class="space-y-4">
+<div class="flex items-center justify-between p-3 rounded-xl bg-surface-container-low/50">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-slate-200 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="minimalist aesthetic product photography of a modern luxury wristwatch on white background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuABAXkcMq4FatE15XJ6vCjZT7i4aMvH7FR98RzNIKav4vXfKYsaqJ60-gDqnyXTSiQecp2X8BsIrYMnlVt3iAfoYlyMOsAwTy7yApU_dy6bgOuPNUaNixo5dPooAvEBc10pMlS2BPOt_3gsD6X2mEuzfWWXVxahXqPcmDW230qHdQKj-chj2QMQYW7Sfxg1j2FTr6awsrhdTRW5dx6cf5KT3cqWuuaeJTJkg5erh3AbD3ki3eiZzqgS8sfrF3GF57eWuqPeZgnOHso"/>
+</div>
+<div>
+<h4 class="text-[11px] font-black text-slate-900">Sérum Facial Ultra</h4>
+<p class="text-[10px] font-bold text-slate-400 uppercase">Beleza &amp; Estética</p>
+</div>
+</div>
+<div class="text-right">
+<div class="text-[11px] font-black text-secondary">R$ 8.420 Lucro</div>
+<div class="text-[10px] font-bold text-slate-500">ROI 3.4x</div>
+</div>
+</div>
+<div class="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-slate-200 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="professional studio shot of wireless black headphones on a light gray surface" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDnsbufFtjTFQnHrfNPS-DEGYmtZP5IdHiCGFCDt8YsUdsMkyU2OSKNfMAcJcToyCv4OojododVqF0DLeK5szDh2Jth3V3oUR0EIWPuFwEkjV3BvU0vOHSFDrWLMKjZfx1VpgFBNkJg8V4itUgUHObf9_-eU0O8gzm486F0UyYkxLqInBz0ReTNHfead5tH82077pZNK92q3X35w9M3hDSkMggeOs2PTz-UDks85pDXNUoIUln-v34oIAaECwIYzHMTk1uI964pxcA"/>
+</div>
+<div>
+<h4 class="text-[11px] font-black text-slate-900">Fone Noise Cancel</h4>
+<p class="text-[10px] font-bold text-slate-400 uppercase">Tecnologia</p>
+</div>
+</div>
+<div class="text-right">
+<div class="text-[11px] font-black text-secondary">R$ 5.120 Lucro</div>
+<div class="text-[10px] font-bold text-slate-500">ROI 2.8x</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Precisam de Atenção -->
+<div class="bg-white rounded-2xl ghost-border p-6">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-tertiary">warning</span>
+<h3 class="text-[11px] font-black tracking-widest text-slate-900 uppercase">Precisam de Atenção</h3>
+</div>
+<div class="space-y-4">
+<div class="flex items-center justify-between p-3 rounded-xl bg-tertiary-fixed/20">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-slate-200 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="vibrant red sneaker on a clean white background with sharp lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDzrbo_YQ5e3GJg2clhajuLlorE2akP7d57NTMvTxVPOG4Wkmx1oDn6R1SIOrNyBuamgGF1XPHIAfH3mdMNFV5rvDCGKmZkdxlU9zYifcbdoAVXpQx3lsYCWhiZaOyjSyjCh1ROWjX48QP0YHKpzRqY_yiSMtjQfx_PuB7-mX2zB1TUaxsnRLJfG604RPM-8ylZkAigLOLIGOnuZOX92qUZ6NPrltL_A0vsOSHQyCjS2IWNUc7wIffKyjP2JdCXsQ7B4HXkH13BXVI"/>
+</div>
+<div>
+<h4 class="text-[11px] font-black text-slate-900">Tênis HyperRun</h4>
+<p class="text-[10px] font-bold text-slate-400 uppercase">Esportes</p>
+</div>
+</div>
+<div class="text-right">
+<div class="text-[11px] font-black text-tertiary">-R$ 1.200 Lucro</div>
+<div class="text-[10px] font-bold text-slate-500">ROI 0.4x</div>
+</div>
+</div>
+<div class="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-slate-200 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="premium stylish sunglasses on a minimalist white surface with soft shadows" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCf7abF83NWj1HgMTlzYv_5NIG6RcGa5nlFdBJecgaaun2WVDFL0TkIpUwvDWCyyjvJ748bmED5dNJmG7Ikaw5V58lS0DtrT5iGl1U1obDWiL5j3JcxZyUTe5Iq-IO5ghu_DYEu0_nyrKUNXyevNzTaQwrvi4W3riuWI9prUJYi9pXGfFd8cIwD4JdLSDdY6hAGeUFw4G_sMF7nY2JJfcvUhvC0q_GyFecydmaVGOT1v6koknl6SV0GQDhg8pVGxgR0vbRTw1J6QCU"/>
+</div>
+<div>
+<h4 class="text-[11px] font-black text-slate-900">Óculos Aviador Pro</h4>
+<p class="text-[10px] font-bold text-slate-400 uppercase">Acessórios</p>
+</div>
+</div>
+<div class="text-right">
+<div class="text-[11px] font-black text-slate-900">R$ 200 Lucro</div>
+<div class="text-[10px] font-bold text-tertiary uppercase">CTR Baixo</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Charts Section -->
+<section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+<div class="bg-white rounded-2xl ghost-border p-6">
+<div class="flex items-center justify-between mb-8">
+<h3 class="text-[11px] font-black tracking-widest text-slate-900 uppercase">Tendência de Receita</h3>
+<div class="flex gap-2">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="text-[10px] font-bold text-slate-400">Atual</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-slate-200"></span>
+<span class="text-[10px] font-bold text-slate-400">Prev.</span>
+</div>
+</div>
+</div>
+<div class="h-48 flex items-end justify-between gap-1">
+<!-- Simulated Sparkline/Bar chart -->
+<div class="w-full bg-primary/10 rounded-t-sm h-[30%]"></div>
+<div class="w-full bg-primary/20 rounded-t-sm h-[45%]"></div>
+<div class="w-full bg-primary/30 rounded-t-sm h-[40%]"></div>
+<div class="w-full bg-primary/40 rounded-t-sm h-[60%]"></div>
+<div class="w-full bg-primary/50 rounded-t-sm h-[55%]"></div>
+<div class="w-full bg-primary/60 rounded-t-sm h-[80%]"></div>
+<div class="w-full bg-primary rounded-t-sm h-[95%]"></div>
+</div>
+<div class="flex justify-between mt-4 text-[10px] font-bold text-slate-400 uppercase">
+<span>Sem 1</span>
+<span>Sem 2</span>
+<span>Sem 3</span>
+<span>Sem 4</span>
+</div>
+</div>
+<div class="bg-white rounded-2xl ghost-border p-6">
+<h3 class="text-[11px] font-black tracking-widest text-slate-900 uppercase mb-8">Funil de Conversão</h3>
+<div class="space-y-6">
+<div class="space-y-1">
+<div class="flex justify-between text-[10px] font-black uppercase">
+<span class="text-slate-900">Impressões</span>
+<span class="text-slate-400">450.230</span>
+</div>
+<div class="w-full h-8 bg-slate-50 rounded-md overflow-hidden flex">
+<div class="bg-primary/20 h-full w-full"></div>
+</div>
+</div>
+<div class="space-y-1 pl-4 border-l-2 border-slate-100">
+<div class="flex justify-between text-[10px] font-black uppercase">
+<span class="text-slate-900">Cliques</span>
+<span class="text-slate-400">30.100 (6.7%)</span>
+</div>
+<div class="w-full h-8 bg-slate-50 rounded-md overflow-hidden flex">
+<div class="bg-primary/40 h-full w-[40%]"></div>
+</div>
+</div>
+<div class="space-y-1 pl-8 border-l-2 border-slate-100">
+<div class="flex justify-between text-[10px] font-black uppercase">
+<span class="text-slate-900">Checkout</span>
+<span class="text-slate-400">3.450 (11.4%)</span>
+</div>
+<div class="w-full h-8 bg-slate-50 rounded-md overflow-hidden flex">
+<div class="bg-primary/70 h-full w-[15%]"></div>
+</div>
+</div>
+<div class="space-y-1 pl-12 border-l-2 border-slate-100">
+<div class="flex justify-between text-[10px] font-black uppercase">
+<span class="text-slate-900">Vendas</span>
+<span class="text-slate-400">1.240 (35.9%)</span>
+</div>
+<div class="w-full h-8 bg-slate-50 rounded-md overflow-hidden flex">
+<div class="bg-primary h-full w-[8%]"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Product Table -->
+<section class="bg-white rounded-2xl ghost-border overflow-hidden">
+<div class="p-6 flex items-center justify-between border-b border-slate-100">
+<h3 class="text-[11px] font-black tracking-widest text-slate-900 uppercase">Detalhamento por Produto</h3>
+<div class="flex items-center gap-2">
+<span class="text-[10px] font-bold text-slate-400 uppercase">Filtrar por ROI:</span>
+<select class="text-[10px] font-bold border-none bg-slate-50 rounded-lg py-1 px-3">
+<option>Todos</option>
+<option>ROI &gt; 2.0</option>
+</select>
+</div>
+</div>
+<div class="overflow-x-auto no-scrollbar">
+<table class="w-full text-left">
+<thead class="bg-surface-container-low">
+<tr>
+<th class="px-6 py-4 text-[11px] font-semibold tracking-widest text-slate-400 uppercase">Produto</th>
+<th class="px-6 py-4 text-[11px] font-semibold tracking-widest text-slate-400 uppercase">Gasto</th>
+<th class="px-6 py-4 text-[11px] font-semibold tracking-widest text-slate-400 uppercase">Receita</th>
+<th class="px-6 py-4 text-[11px] font-semibold tracking-widest text-slate-400 uppercase text-center">Lucro</th>
+<th class="px-6 py-4 text-[11px] font-semibold tracking-widest text-slate-400 uppercase text-center">ROI</th>
+<th class="px-6 py-4 text-[11px] font-semibold tracking-widest text-slate-400 uppercase text-center">CR</th>
+<th class="px-6 py-4 text-[11px] font-semibold tracking-widest text-slate-400 uppercase text-center">Conv.</th>
+<th class="px-6 py-4 text-[11px] font-semibold tracking-widest text-slate-400 uppercase text-center">Cliques</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-50">
+<tr class="hover:bg-surface-container-high transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-slate-100 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="product shot of serum bottle" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDc0NC3TTCHHuqo8-adQVud43DL4O8O9UjNO8Vz_wNnXPFyMN2fObUos_bOgonjC3HOxOywvtZb81wn3UKG96aGhwB6c4Ho6NbPVRmgx50igHu9LW3XoaEhd3LJ2JAyHRshk_9L6ECRcA_w9Y4g3n2tuxBpUFUw1z4xQyj5FYq39qh-bxDY0SXmw23OyUGBEjemlqysrI-_YdXuT4mzF8Zf_4Yeyz3R-anVn4H8xucOhIMilGX4TCldXGWvb7AZnL2uU-0MyMamI3Y"/>
+</div>
+<span class="text-[11px] font-black text-slate-900 uppercase">Sérum Ultra</span>
+</div>
+</td>
+<td class="px-6 py-4 text-[11px] font-bold text-slate-600">R$ 2.450,00</td>
+<td class="px-6 py-4 text-[11px] font-bold text-slate-600">R$ 10.870,00</td>
+<td class="px-6 py-4 text-[11px] font-black text-secondary text-center">R$ 8.420,00</td>
+<td class="px-6 py-4 text-center">
+<span class="px-2 py-1 bg-secondary/10 text-secondary text-[10px] font-black rounded">3.4x</span>
+</td>
+<td class="px-6 py-4 text-[11px] font-bold text-slate-600 text-center">5.2%</td>
+<td class="px-6 py-4 text-[11px] font-bold text-slate-600 text-center">450</td>
+<td class="px-6 py-4 text-[11px] font-bold text-slate-600 text-center">8.6k</td>
+</tr>
+<tr class="hover:bg-surface-container-high transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-slate-100 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="product shot of headphones" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDZe0TFEWUszm3AhwPl2uHffndiXjqflbkrIM4z_GUeTp5j-VdDyZHjeKmgDI_qexxt4KVLa9GGWvTY0X-acWJVxWxy56XL6zzBgmaymtzds42080ve1jnHpie_tWXRWAW-LxBnPXPos0_rpink2_iGlSokzUncXnNfBi5XFkVTPtW9PgsrKPyK37SUBp5_CFlmDkjhYmMX6qe6V1ieDHD5HBMvz7lhymYpHWg5X6o9g-96Y82Ak3l7N17tIw5huWWQOSpkval_59I"/>
+</div>
+<span class="text-[11px] font-black text-slate-900 uppercase">Fone Noise</span>
+</div>
+</td>
+<td class="px-6 py-4 text-[11px] font-bold text-slate-600">R$ 1.820,00</td>
+<td class="px-6 py-4 text-[11px] font-bold text-slate-600">R$ 6.940,00</td>
+<td class="px-6 py-4 text-[11px] font-black text-secondary text-center">R$ 5.120,00</td>
+<td class="px-6 py-4 text-center">
+<span class="px-2 py-1 bg-secondary/10 text-secondary text-[10px] font-black rounded">2.8x</span>
+</td>
+<td class="px-6 py-4 text-[11px] font-bold text-slate-600 text-center">4.8%</td>
+<td class="px-6 py-4 text-[11px] font-bold text-slate-600 text-center">310</td>
+<td class="px-6 py-4 text-[11px] font-bold text-slate-600 text-center">6.4k</td>
+</tr>
+<tr class="hover:bg-surface-container-high transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-slate-100 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="product shot of sneaker" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCe8NwHjZsT-qic6904FAqU1-99Fawt-MWZ6gzuVkIF_6X7OFozqrUHx1zbo3-rk6JjfUXnjh3HpyhQNMUF3cYGObaW1LWTT1cLBkF65Pg8vNSiWLZa0q3CuTO49irAoFZuawUlySy1jZvI5FBXR-_XByu5QbZkPeefOEa-WXgxFqy9xfhtb_GjpV78B-4goQQhH7pETIPQwHxVjVU9_q4lhqr23L9tCxDUd3T9_AjDh7NCi2jMZ7TlLmACpZrq5Kl_lZR2mndEL6o"/>
+</div>
+<span class="text-[11px] font-black text-slate-900 uppercase">HyperRun</span>
+</div>
+</td>
+<td class="px-6 py-4 text-[11px] font-bold text-slate-600">R$ 2.100,00</td>
+<td class="px-6 py-4 text-[11px] font-bold text-slate-600">R$ 900,00</td>
+<td class="px-6 py-4 text-[11px] font-black text-tertiary text-center">-R$ 1.200,00</td>
+<td class="px-6 py-4 text-center">
+<span class="px-2 py-1 bg-tertiary/10 text-tertiary text-[10px] font-black rounded">0.4x</span>
+</td>
+<td class="px-6 py-4 text-[11px] font-bold text-slate-600 text-center">1.2%</td>
+<td class="px-6 py-4 text-[11px] font-bold text-slate-600 text-center">45</td>
+<td class="px-6 py-4 text-[11px] font-bold text-slate-600 text-center">3.7k</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="px-6 py-4 bg-slate-50 flex items-center justify-between">
+<span class="text-[10px] font-bold text-slate-400 uppercase">Mostrando 3 de 8 produtos</span>
+<div class="flex gap-2">
+<button class="p-1 rounded bg-white border border-slate-200 text-slate-400 hover:text-slate-900 transition-colors">
+<span class="material-symbols-outlined text-sm">chevron_left</span>
+</button>
+<button class="p-1 rounded bg-white border border-slate-200 text-slate-400 hover:text-slate-900 transition-colors">
+<span class="material-symbols-outlined text-sm">chevron_right</span>
+</button>
+</div>
+</div>
+</section>
+</main>
+</body></html>

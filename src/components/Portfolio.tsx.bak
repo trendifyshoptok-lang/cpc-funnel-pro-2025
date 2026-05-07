@@ -1,0 +1,991 @@
+// @ts-nocheck
+import React, { useState, useMemo, useEffect } from 'react';
+import type { Product, Campaign, PortfolioProps, EnrichedProduct, OptimizationResult } from '../types';
+import { optimizePortfolio, optimizePortfolioSimplex } from '../services/logic';
+import { 
+  Zap, TrendingUp, DollarSign, FolderOpen, Search, Trash2, BarChart2, 
+  Archive, Filter, Award, AlertTriangle, TrendingDown,
+  Target, Percent, MousePointer2, ShoppingCart, CheckCircle, XCircle,
+  AlertCircle, Activity, Package, Info, HelpCircle
+} from 'lucide-react';
+
+type SortField = 'name' | 'profit' | 'roi' | 'spend' | 'revenue' | 'campaigns';
+type SortDirection = 'asc' | 'desc';
+type FilterStatus = 'all' | 'profitable' | 'negative' | 'neutral';
+type OptimizationMethod = 'simple' | 'simplex';
+
+export const Portfolio: React.FC<PortfolioProps & { fixedCostsTotal?: number }> = ({ 
+  products, 
+  history, 
+  onDeleteProduct, 
+  onSelectProductForAnalysis,
+  fixedCostsTotal = 0 //  ADICIONADO: Agora recebe o custo global
+}) => {
+  const [simplexBudget, setSimplexBudget] = useState(1000);
+  const [allocation, setAllocation] = useState<OptimizationResult | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortField, setSortField] = useState<SortField>('profit');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
+  const [filterNicho, setFilterNicho] = useState<string>('all');
+  const [optimizationMethod, setOptimizationMethod] = useState<OptimizationMethod>('simple');
+  
+  useEffect(() => {
+    setAllocation(null);
+  }, [optimizationMethod]);
+
+  const handleOptimize = () => {
+    try {
+      setAllocation(null);
+      
+      setTimeout(() => {
+        if (!simplexBudget || simplexBudget <= 0) {
+          alert('Por favor, insira um orçamento válido maior que zero.');
+          return;
+        }
+        
+        if (!products || products.length === 0) {
+          alert('Não há produtos disponíveis para otimização.');
+          return;
+        }
+
+        let result: OptimizationResult | null = null;
+        
+        try {
+          if (optimizationMethod === 'simple') {
+            result = optimizePortfolio(simplexBudget, products, history || []);
+          } else {
+            result = optimizePortfolioSimplex(simplexBudget, products, history || []);
+          }
+        } catch (calcError) {
+          console.error('Erro no cálculo:', calcError);
+          alert('Erro no cálculo. Tente novamente.');
+          return;
+        }
+        
+        if (!result || typeof result !== 'object') {
+          console.error('Resultado inválido:', result);
+          alert('Erro ao calcular otimização. Tente novamente.');
+          return;
+        }
+        
+        setAllocation(result);
+        
+      }, 100);
+      
+    } catch (error) {
+      console.error(' Erro geral:', error);
+      alert('Ocorreu um erro. Verifique o console (F12) para detalhes.');
+      setAllocation(null);
+    }
+  };
+
+  const enrichedProducts: EnrichedProduct[] = useMemo(() => {
+    return products.map(p => {
+      const prodHistory = history.filter(h => h.productId === p.id);
+      const spend = prodHistory.reduce((acc, h) => acc + h.spend, 0);
+      const revenue = prodHistory.reduce((acc, h) => acc + h.revenue, 0);
+      const conversions = prodHistory.reduce((acc, h) => acc + h.conversions, 0);
+      const clicks = prodHistory.reduce((acc, h) => acc + h.clicks, 0);
+      
+      const fixedCosts = p.costs?.total || 0;
+      const profit = revenue - spend - fixedCosts;
+      
+      const totalInvestmentProduct = spend + fixedCosts;
+      const roi = totalInvestmentProduct > 0 ? (profit / totalInvestmentProduct) * 100 : 0;
+      
+      const roas = spend > 0 ? revenue / spend : 0;
+      const cr = clicks > 0 ? (conversions / clicks) * 100 : 0;
+      const cpc = clicks > 0 ? spend / clicks : 0;
+      const avgTicket = conversions > 0 ? revenue / conversions : 0;
+      
+      let status: 'excellent' | 'good' | 'warning' | 'danger' = 'good';
+      if (roi > 100) status = 'excellent';
+      else if (roi > 50) status = 'good';
+      else if (roi > 0) status = 'warning';
+      else status = 'danger';
+
+      let healthScore = 50;
+      if (roi > 100) healthScore += 30;
+      else if (roi > 50) healthScore += 20;
+      else if (roi > 0) healthScore += 10;
+      else healthScore -= 20;
+      
+      if (cr > 2) healthScore += 20;
+      else if (cr > 1) healthScore += 10;
+      
+      healthScore = Math.max(0, Math.min(100, healthScore));
+
+      return {
+        ...p,
+        campaignCount: prodHistory.length,
+        spend,
+        revenue,
+        profit,
+        roi,
+        roas,
+        conversions,
+        clicks,
+        cr,
+        cpc,
+        avgTicket,
+        status,
+        healthScore,
+        fixedCosts
+      } as EnrichedProduct;
+    });
+  }, [products, history]);
+
+  const filteredAndSortedProducts: EnrichedProduct[] = useMemo(() => {
+    let filtered = enrichedProducts;
+
+    if (searchTerm) {
+      filtered = filtered.filter(p => 
+        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.nicho.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.market.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter(p => {
+        if (filterStatus === 'profitable') return p.profit > 0;
+        if (filterStatus === 'negative') return p.profit < 0;
+        if (filterStatus === 'neutral') return p.profit === 0;
+        return true;
+      });
+    }
+
+    if (filterNicho !== 'all') {
+      filtered = filtered.filter(p => p.nicho === filterNicho);
+    }
+
+    filtered.sort((a, b) => {
+      const aVal = a[sortField as keyof EnrichedProduct];
+      const bVal = b[sortField as keyof EnrichedProduct];
+      
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        return sortDirection === 'asc' 
+          ? aVal.localeCompare(bVal)
+          : bVal.localeCompare(aVal);
+      }
+      
+      return sortDirection === 'asc' ? (aVal as number) - (bVal as number) : (bVal as number) - (aVal as number);
+    });
+
+    return filtered;
+  }, [enrichedProducts, searchTerm, filterStatus, filterNicho, sortField, sortDirection]);
+
+  const totalSpend = history.reduce((acc, curr) => acc + curr.spend, 0);
+  const totalRevenue = history.reduce((acc, curr) => acc + curr.revenue, 0);
+
+  const totalFixedCosts = enrichedProducts.reduce((acc, p) => {
+    return acc + (p.campaignCount > 0 ? (p.fixedCosts || 0) : 0);
+  }, 0);
+
+  const totalProfit = totalRevenue - totalSpend - totalFixedCosts;
+  const totalCampaigns = history.length;
+  const totalInvestment = totalSpend + totalFixedCosts;
+  const avgROI = totalInvestment > 0 ? (totalProfit / totalInvestment) * 100 : 0;
+
+  const uniqueNichos = Array.from(new Set(products.map(p => p.nicho)));
+  const top3 = [...enrichedProducts].sort((a, b) => b.profit - a.profit).slice(0, 3);
+  const bottom3 = [...enrichedProducts].sort((a, b) => a.profit - b.profit).slice(0, 3);
+
+  const selectedProduct: EnrichedProduct | undefined = enrichedProducts.find(p => p.id === selectedProductId);
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
+
+  const getStatusColor = (status: EnrichedProduct['status']) => {
+    switch(status) {
+      case 'excellent': return 'from-green-400 to-emerald-500';
+      case 'good': return 'from-blue-400 to-cyan-500';
+      case 'warning': return 'from-yellow-400 to-orange-400';
+      case 'danger': return 'from-red-400 to-pink-500';
+      default: return 'from-slate-400 to-slate-500';
+    }
+  };
+
+  const getStatusBadge = (status: EnrichedProduct['status']) => {
+    switch(status) {
+      case 'excellent': return { icon: <Award size={14}/>, text: ' Excelente', class: 'bg-green-100 text-green-700' };
+      case 'good': return { icon: <CheckCircle size={14}/>, text: ' Bom', class: 'bg-blue-100 text-blue-700' };
+      case 'warning': return { icon: <AlertCircle size={14}/>, text: '️ Atenção', class: 'bg-yellow-100 text-yellow-700' };
+      case 'danger': return { icon: <XCircle size={14}/>, text: ' Crítico', class: 'bg-red-100 text-red-700' };
+      default: return { icon: null, text: 'Neutro', class: 'bg-slate-100 text-slate-700' };
+    }
+  };
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500">
+      
+      {/* HEADER - MÉTRICAS GLOBAIS */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="card p-5">
+          <div className="flex items-center gap-2 mb-2">
+            <Package style={{ color: 'var(--accent)' }} size={16}/>
+            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-ui)' }}>Produtos Ativos</span>
+          </div>
+          <div className="tnum text-3xl font-black" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{products.length}</div>
+          <div className="text-[11px] mt-1" style={{ color: 'var(--text-muted)' }}>{totalCampaigns} campanhas rodadas</div>
+        </div>
+
+        <div className="card p-5">
+          <div className="flex items-center gap-2 mb-2">
+            <DollarSign style={{ color: totalProfit >= 0 ? 'var(--success)' : 'var(--danger)' }} size={16}/>
+            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-ui)' }}>Lucro Liquido</span>
+          </div>
+          <div className="tnum text-3xl font-black" style={{ color: totalProfit >= 0 ? 'var(--success)' : 'var(--danger)', fontFamily: 'var(--font-mono)' }}>
+            R$ {totalProfit.toFixed(2)}
+          </div>
+          <div className="text-[11px] mt-1 tnum" style={{ color: 'var(--text-muted)' }}>
+            Rec: R$ {totalRevenue.toFixed(0)} | Ads: -R$ {totalSpend.toFixed(0)}
+          </div>
+        </div>
+
+        <div className="card p-5 group relative">
+          <div className="flex items-center gap-2 mb-2">
+            <Target style={{ color: 'var(--accent)' }} size={16}/>
+            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-ui)' }}>ROI Medio</span>
+            <div className="relative inline-block">
+              <HelpCircle size={13} style={{ color: 'var(--text-muted)' }} className="cursor-help"/>
+              <div className="invisible group-hover:visible absolute z-[9999] w-64 p-3 bg-stone-900 text-white text-xs rounded-lg shadow-xl -top-2 left-6 border border-stone-700" style={{ fontFamily: 'var(--font-ui)' }}>
+                <strong className="block mb-1">ROI Medio do Portfolio</strong>
+                <p className="text-stone-300 leading-relaxed">
+                  Formula: <code className="bg-stone-800 px-1 rounded text-[10px]">(Lucro / Investimento) × 100</code>
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="tnum text-3xl font-black" style={{ color: avgROI >= 0 ? 'var(--success)' : 'var(--danger)', fontFamily: 'var(--font-mono)' }}>
+            {avgROI.toFixed(1)}%
+          </div>
+          <div className="text-[11px] mt-1" style={{ color: 'var(--text-muted)' }}>Retorno sobre investimento total</div>
+        </div>
+
+        <div className="card p-5 group relative">
+          <div className="flex items-center gap-2 mb-2">
+            <Activity style={{ color: 'var(--warn)' }} size={16}/>
+            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-ui)' }}>Investimento Total</span>
+          </div>
+          <div className="tnum text-3xl font-black" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>R$ {totalInvestment.toFixed(0)}</div>
+          <div className="text-[11px] mt-1 tnum" style={{ color: 'var(--text-muted)' }}>
+            Ads R$ {totalSpend.toFixed(0)} + Fixos R$ {totalFixedCosts.toFixed(0)}
+          </div>
+        </div>
+      </div>
+
+      {/* TOP 3 & BOTTOM 3 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white p-6 rounded-2xl border border-slate-200">
+          <div className="flex items-center gap-2 mb-4">
+            <Award className="text-yellow-600" size={20}/>
+            <h3 className="font-bold text-slate-900"> Top 3 Melhores Produtos</h3>
+          </div>
+          <div className="space-y-3">
+            {top3.map((p, idx) => (
+              <div key={p.id} className="flex items-center gap-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200 hover: transition-all">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-lg ${
+                  idx === 0 ? 'bg-yellow-400 text-yellow-900' :
+                  idx === 1 ? 'bg-slate-300 text-slate-700' :
+                  'bg-orange-300 text-orange-800'
+                }`}>
+                  {idx + 1}
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-slate-900">{p.name}</p>
+                  <p className="text-xs text-slate-600">{p.nicho}</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-black text-green-600">R$ {p.profit.toFixed(2)}</p>
+                  <p className="text-xs text-slate-600">ROI: {p.roi.toFixed(0)}%</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl border border-slate-200">
+          <div className="flex items-center gap-2 mb-4">
+            <AlertTriangle className="text-red-600" size={20}/>
+            <h3 className="font-bold text-slate-900">️ Produtos que Precisam Atenção</h3>
+          </div>
+          <div className="space-y-3">
+            {bottom3.map((p, idx) => (
+              <div key={p.id} className="flex items-center gap-3 p-3 bg-gradient-to-r from-red-50 to-orange-50 rounded-lg border border-red-200 hover: transition-all">
+                <div className="w-10 h-10 rounded-full bg-red-500 text-white flex items-center justify-center font-black text-lg">
+                  !
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-slate-900">{p.name}</p>
+                  <p className="text-xs text-slate-600">{p.nicho}</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-black text-red-600">R$ {p.profit.toFixed(2)}</p>
+                  <p className="text-xs text-slate-600">ROI: {p.roi.toFixed(0)}%</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* CONSULTA RÁPIDA - PRODUTO ESPECÍFICO */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 overflow-visible">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+          <h3 className="font-bold text-slate-800 flex items-center gap-2">
+            <Search size={20} className="text-blue-600"/> Análise Detalhada do Produto
+          </h3>
+          <div className="flex items-center gap-3">
+            <select 
+              className="p-2.5 border border-slate-300 rounded-lg bg-white text-slate-900 min-w-[250px] font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+              value={selectedProductId}
+              onChange={e => setSelectedProductId(e.target.value)}
+            >
+              <option value="">Selecione um produto...</option>
+              {enrichedProducts.map(p => (
+                <option key={p.id} value={p.id}>{p.name} - {p.nicho}</option>
+              ))}
+            </select>
+            {selectedProduct && (
+              <button 
+                onClick={() => setSelectedProductId("")}
+                className="text-sm text-red-500 hover:text-red-700 font-medium flex items-center gap-1 whitespace-nowrap"
+              >
+                <XCircle size={14}/> Fechar
+              </button>
+            )}
+          </div>
+        </div>
+
+        {selectedProduct ? (
+          <div className={`bg-gradient-to-br ${getStatusColor(selectedProduct.status)} bg-opacity-10 rounded-xl p-6 border-2 overflow-visible ${
+            selectedProduct.status === 'excellent' ? 'border-green-300' :
+            selectedProduct.status === 'good' ? 'border-blue-300' :
+            selectedProduct.status === 'warning' ? 'border-yellow-300' :
+            'border-red-300'
+          } animate-in fade-in zoom-in duration-300`}>
+            <div className="flex justify-between items-start mb-6">
+              <div className="flex items-center gap-4">
+                <div className={`bg-gradient-to-br ${getStatusColor(selectedProduct.status)} p-3 rounded-lg text-white `}>
+                  <Archive size={28} />
+                </div>
+                <div>
+                  <h4 className="font-black text-2xl text-slate-900 flex items-center gap-3 mb-2">
+                    {selectedProduct.name}
+                    <span className={`text-xs font-bold px-3 py-1 rounded-full ${getStatusBadge(selectedProduct.status).class} flex items-center gap-1`}>
+                      {getStatusBadge(selectedProduct.status).icon}
+                      {getStatusBadge(selectedProduct.status).text}
+                    </span>
+                  </h4>
+                  <div className="flex items-center gap-3 text-sm text-slate-600">
+                    <span className="font-bold">{selectedProduct.nicho}</span>
+                    <span>•</span>
+                    <span>{selectedProduct.market}</span>
+                    <span>•</span>
+                    <span className={`px-2 py-0.5 rounded ${selectedProduct.funnelStage === 'fundo' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
+                      {selectedProduct.funnelStage === 'fundo' ? ' Fundo' : ' Topo'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <button 
+                onClick={() => onSelectProductForAnalysis(selectedProduct)}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 flex items-center gap-2  transition-all hover:scale-105"
+              >
+                <BarChart2 size={16}/> Abrir Análise Completa
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-4 overflow-visible">
+              <div className="bg-white/80 backdrop-blur-sm p-3 rounded-xl border border-slate-200 group relative overflow-visible">
+                <div className="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1">
+                  <DollarSign size={10}/> Investimento
+                  <HelpCircle size={10} className="text-slate-400 cursor-help"/>
+<div className="invisible group-hover:visible fixed w-48 p-2 bg-slate-900 text-white text-[10px] rounded-lg shadow-2xl border border-slate-700 pointer-events-none" style={{zIndex: 99999, transform: 'translate(10px, -50%)'}}>
+                    <strong className="block mb-1"> Investimento Total</strong>
+                    <p className="text-slate-300">Ads + Custos Fixos do produto</p>
+                  </div>
+                </div>
+                <div className="font-bold text-slate-900 text-lg">R$ {(selectedProduct.spend + selectedProduct.fixedCosts).toFixed(2)}</div>
+                <div className="text-[9px] text-slate-500 mt-0.5">
+                  Ads: R$ {selectedProduct.spend.toFixed(2)} + Fixos: R$ {selectedProduct.fixedCosts.toFixed(2)}
+                </div>
+              </div>
+              
+              <div className="bg-white/80 backdrop-blur-sm p-3 rounded-xl border border-slate-200 group relative overflow-visible">
+                <div className="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1">
+                  <TrendingUp size={10}/> Receita
+                  <HelpCircle size={10} className="text-slate-400 cursor-help"/>
+<div className="invisible group-hover:visible fixed w-48 p-2 bg-slate-900 text-white text-[10px] rounded-lg shadow-2xl border border-slate-700 pointer-events-none" style={{zIndex: 99999, transform: 'translate(10px, -50%)'}}>
+                    <strong className="block mb-1"> Receita Total</strong>
+                    <p className="text-slate-300">Soma de todas as vendas geradas</p>
+                  </div>
+                </div>
+                <div className="font-bold text-slate-900 text-lg">R$ {selectedProduct.revenue.toFixed(2)}</div>
+              </div>
+              
+              <div className="bg-white/80 backdrop-blur-sm p-3 rounded-xl border border-slate-200 group relative overflow-visible">
+                <div className="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1">
+                  <Target size={10}/> Lucro
+                  <HelpCircle size={10} className="text-slate-400 cursor-help"/>
+<div className="invisible group-hover:visible fixed w-48 p-2 bg-slate-900 text-white text-[10px] rounded-lg shadow-2xl border border-slate-700 pointer-events-none" style={{zIndex: 99999, transform: 'translate(10px, -50%)'}}>
+                    <strong className="block mb-1"> Lucro Líquido</strong>
+                    <p className="text-slate-300">Receita - Ads - Custos Fixos</p>
+                  </div>
+                </div>
+                <div className={`font-bold text-lg ${selectedProduct.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  R$ {selectedProduct.profit.toFixed(2)}
+                </div>
+              </div>
+              
+              <div className="bg-white/80 backdrop-blur-sm p-3 rounded-xl border border-slate-200 group relative overflow-visible">
+                <div className="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1">
+                  <Percent size={10}/> ROI
+                  <HelpCircle size={10} className="text-slate-400 cursor-help"/>
+<div className="invisible group-hover:visible fixed w-56 p-2 bg-slate-900 text-white text-[10px] rounded-lg shadow-2xl border border-slate-700 pointer-events-none" style={{zIndex: 99999, transform: 'translate(10px, -50%)'}}>
+                    <strong className="block mb-1"> ROI (Return on Investment)</strong>
+                    <p className="text-slate-300 mb-1">Fórmula:</p>
+                    <code className="bg-slate-800 px-1 rounded text-[9px]">(Lucro / Investimento) × 100</code>
+                    <p className="text-slate-300 mt-1">Retorno % sobre cada R$ investido</p>
+                  </div>
+                </div>
+                <div className={`font-bold text-lg ${selectedProduct.roi >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                  {selectedProduct.roi.toFixed(1)}%
+                </div>
+              </div>
+              
+              <div className="bg-white/80 backdrop-blur-sm p-3 rounded-xl border border-slate-200 group relative overflow-visible">
+                <div className="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1">
+                  <Percent size={10}/> CR
+                  <HelpCircle size={10} className="text-slate-400 cursor-help"/>
+<div className="invisible group-hover:visible fixed w-52 p-2 bg-slate-900 text-white text-[10px] rounded-lg shadow-2xl border border-slate-700 pointer-events-none" style={{zIndex: 99999, transform: 'translate(10px, -50%)'}}>
+                    <strong className="block mb-1"> Taxa de Conversão</strong>
+                    <p className="text-slate-300 mb-1">Fórmula:</p>
+                    <code className="bg-slate-800 px-1 rounded text-[9px]">(Conversões / Cliques) × 100</code>
+                    <p className="text-slate-300 mt-1">% de cliques que viraram vendas</p>
+                  </div>
+                </div>
+                <div className="font-bold text-slate-900 text-lg">{selectedProduct.cr.toFixed(2)}%</div>
+              </div>
+              
+              <div className="bg-white/80 backdrop-blur-sm p-3 rounded-xl border border-slate-200 group relative overflow-visible">
+                <div className="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1">
+                  <MousePointer2 size={10}/> CPC
+                  <HelpCircle size={10} className="text-slate-400 cursor-help"/>
+<div className="invisible group-hover:visible fixed w-52 p-2 bg-slate-900 text-white text-[10px] rounded-lg shadow-2xl border border-slate-700 pointer-events-none" style={{zIndex: 99999, transform: 'translate(10px, -50%)'}}>
+                    <strong className="block mb-1"> Custo por Clique</strong>
+                    <p className="text-slate-300 mb-1">Fórmula:</p>
+                    <code className="bg-slate-800 px-1 rounded text-[9px]">Gasto / Cliques</code>
+                    <p className="text-slate-300 mt-1">Quanto você paga por cada clique</p>
+                  </div>
+                </div>
+                <div className="font-bold text-slate-900 text-lg">R$ {selectedProduct.cpc.toFixed(2)}</div>
+              </div>
+              
+              <div className="bg-white/80 backdrop-blur-sm p-3 rounded-xl border border-slate-200 group relative overflow-visible">
+                <div className="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1">
+                  <ShoppingCart size={10}/> Conversões
+                  <HelpCircle size={10} className="text-slate-400 cursor-help"/>
+<div className="invisible group-hover:visible fixed w-48 p-2 bg-slate-900 text-white text-[10px] rounded-lg shadow-2xl border border-slate-700 pointer-events-none" style={{zIndex: 99999, transform: 'translate(10px, -50%)'}}>
+                    <strong className="block mb-1"> Conversões</strong>
+                    <p className="text-slate-300">Total de vendas realizadas</p>
+                  </div>
+                </div>
+                <div className="font-bold text-slate-900 text-lg">{selectedProduct.conversions}</div>
+              </div>
+              
+              <div className="bg-white/80 backdrop-blur-sm p-3 rounded-xl border border-slate-200 group relative overflow-visible">
+                <div className="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1">
+                  <Activity size={10}/> ROAS
+                  <HelpCircle size={10} className="text-slate-400 cursor-help"/>
+<div className="invisible group-hover:visible fixed w-56 p-2 bg-slate-900 text-white text-[10px] rounded-lg shadow-2xl border border-slate-700 pointer-events-none" style={{zIndex: 99999, transform: 'translate(10px, -50%)'}}>
+                    <strong className="block mb-1"> ROAS (Return on Ad Spend)</strong>
+                    <p className="text-slate-300 mb-1">Fórmula:</p>
+                    <code className="bg-slate-800 px-1 rounded text-[9px]">Receita / Gasto com Ads</code>
+                    <p className="text-slate-300 mt-1">Quanto você fatura para cada R$ em ads</p>
+                  </div>
+                </div>
+                <div className="font-bold text-slate-900 text-lg">{selectedProduct.roas.toFixed(2)}x</div>
+              </div>
+              
+              <div className="bg-white/80 backdrop-blur-sm p-3 rounded-xl border border-slate-200 group relative overflow-visible">
+                <div className="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1">
+                  <BarChart2 size={10}/> Campanhas
+                  <HelpCircle size={10} className="text-slate-400 cursor-help"/>
+<div className="invisible group-hover:visible fixed w-48 p-2 bg-slate-900 text-white text-[10px] rounded-lg shadow-2xl border border-slate-700 pointer-events-none" style={{zIndex: 99999, transform: 'translate(10px, -50%)'}}>
+                    <strong className="block mb-1"> Campanhas</strong>
+                    <p className="text-slate-300">Total de campanhas rodadas</p>
+                  </div>
+                </div>
+                <div className="font-bold text-slate-900 text-lg">{selectedProduct.campaignCount}</div>
+              </div>
+              
+              <div className="bg-white/80 backdrop-blur-sm p-3 rounded-xl border border-slate-200 group relative overflow-visible">
+                <div className="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1">
+                  <DollarSign size={10}/> Ticket Médio
+                  <HelpCircle size={10} className="text-slate-400 cursor-help"/>
+<div className="invisible group-hover:visible fixed w-52 p-2 bg-slate-900 text-white text-[10px] rounded-lg shadow-2xl border border-slate-700 pointer-events-none" style={{zIndex: 99999, transform: 'translate(10px, -50%)'}}>
+                    <strong className="block mb-1"> Ticket Médio</strong>
+                    <p className="text-slate-300 mb-1">Fórmula:</p>
+                    <code className="bg-slate-800 px-1 rounded text-[9px]">Receita / Conversões</code>
+                    <p className="text-slate-300 mt-1">Valor médio por venda</p>
+                  </div>
+                </div>
+                <div className="font-bold text-slate-900 text-lg">R$ {selectedProduct.avgTicket.toFixed(2)}</div>
+              </div>
+            </div>
+
+            <div className="bg-white/80 backdrop-blur-sm p-4 rounded-lg border border-slate-200">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-bold text-slate-700">Health Score</span>
+                <span className={`text-2xl font-black ${
+                  selectedProduct.healthScore >= 80 ? 'text-green-600' :
+                  selectedProduct.healthScore >= 60 ? 'text-yellow-600' :
+                  selectedProduct.healthScore >= 40 ? 'text-orange-600' :
+                  'text-red-600'
+                }`}>
+                  {selectedProduct.healthScore}
+                </span>
+              </div>
+              <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
+                <div 
+                  className={`h-full transition-all duration-700 rounded-full ${
+                    selectedProduct.healthScore >= 80 ? 'bg-gradient-to-r from-green-500 to-emerald-600' :
+                    selectedProduct.healthScore >= 60 ? 'bg-gradient-to-r from-yellow-500 to-orange-500' :
+                    selectedProduct.healthScore >= 40 ? 'bg-gradient-to-r from-orange-500 to-red-500' :
+                    'bg-gradient-to-r from-red-500 to-pink-600'
+                  }`}
+                  style={{ width: `${selectedProduct.healthScore}%` }}
+                ></div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-12 text-slate-400 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
+            <Search className="mx-auto mb-3 text-slate-300" size={40}/>
+            <p className="font-medium">Clique em um produto abaixo para ver análise detalhada</p>
+          </div>
+        )}
+      </div>
+
+      {/* FILTROS & BUSCA */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200">
+        <div className="flex items-center gap-2 mb-4">
+          <Filter className="text-indigo-600" size={20}/>
+          <h3 className="font-bold text-slate-900">Filtros & Busca</h3>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-2.5 text-slate-400" size={18}/>
+            <input
+              type="text"
+              placeholder="Buscar produto, nicho..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2 w-full rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-slate-900"
+            />
+          </div>
+
+          <select
+            value={filterStatus}
+            onChange={e => setFilterStatus(e.target.value as FilterStatus)}
+            className="p-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-slate-900 font-medium"
+          >
+            <option value="all">Todos os Status</option>
+            <option value="profitable"> Lucrativos</option>
+            <option value="negative"> No Prejuízo</option>
+            <option value="neutral"> Neutros</option>
+          </select>
+
+          <select
+            value={filterNicho}
+            onChange={e => setFilterNicho(e.target.value)}
+            className="p-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-slate-900 font-medium"
+          >
+            <option value="all">Todos os Nichos</option>
+            {uniqueNichos.map(nicho => (
+              <option key={nicho} value={nicho}>{nicho}</option>
+            ))}
+          </select>
+
+          <button
+            onClick={() => {
+              setSearchTerm('');
+              setFilterStatus('all');
+              setFilterNicho('all');
+            }}
+            className="bg-slate-100 text-slate-700 px-4 py-2 rounded-lg font-medium hover:bg-slate-200 transition-colors"
+          >
+            Limpar Filtros
+          </button>
+        </div>
+
+        <div className="text-sm text-slate-600">
+          Mostrando <strong>{filteredAndSortedProducts.length}</strong> de <strong>{products.length}</strong> produtos
+        </div>
+      </div>
+
+      {/* LISTA DE PRODUTOS */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="font-bold text-slate-800 flex items-center gap-2">
+            <FolderOpen size={20} className="text-yellow-500"/> Minha Pasta de Produtos
+          </h3>
+          <div className="flex gap-2 text-xs">
+            <button onClick={() => handleSort('profit')} className={`px-3 py-1.5 rounded ${sortField === 'profit' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+              Ordenar por Lucro {sortField === 'profit' && (sortDirection === 'asc' ? '↑' : '↓')}
+            </button>
+            <button onClick={() => handleSort('roi')} className={`px-3 py-1.5 rounded ${sortField === 'roi' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+              Ordenar por ROI {sortField === 'roi' && (sortDirection === 'asc' ? '↑' : '↓')}
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-h-[600px] overflow-y-auto pr-2">
+          {filteredAndSortedProducts.map((p) => {
+            const badge = getStatusBadge(p.status);
+            const isSelected = selectedProductId === p.id;
+            return (
+              <div
+                key={p.id}
+                className="card card-interactive cursor-pointer"
+                style={{
+                  padding: '1.25rem',
+                  borderColor: isSelected ? 'var(--accent)' : undefined,
+                  boxShadow: isSelected ? '0 0 0 2px rgba(14,116,144,0.20)' : undefined,
+                }}
+                onClick={() => setSelectedProductId(p.id)}
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <div
+                      className="flex-shrink-0 flex items-center justify-center rounded-lg"
+                      style={{
+                        width: 36, height: 36,
+                        background: p.profit >= 0 ? 'rgba(5,150,105,0.10)' : 'rgba(220,38,38,0.10)',
+                      }}
+                    >
+                      <Archive size={18} style={{ color: p.profit >= 0 ? 'var(--success)' : 'var(--danger)' }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-[14px] truncate" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-ui)', letterSpacing: '-0.01em' }}>{p.name}</h4>
+                      <div className="flex items-center gap-1.5 mt-0.5" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                        <span>{p.nicho}</span>
+                        <span style={{ color: 'var(--border-strong)' }}>·</span>
+                        <span>{p.market}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ml-2 ${
+                      p.status === 'excellent' ? 'badge-success' :
+                      p.status === 'good'      ? 'badge-success' :
+                      p.status === 'warning'   ? 'badge-warn' :
+                      'badge-danger'
+                    }`}
+                    style={{ fontFamily: 'var(--font-ui)', letterSpacing: '0.04em' }}
+                  >
+                    {badge.text}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  <div className="rounded-lg p-2.5 text-center" style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border-subtle)' }}>
+                    <div className="text-[9px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-ui)' }}>Lucro</div>
+                    <div className="tnum font-bold text-[13px]" style={{ color: p.profit >= 0 ? 'var(--success)' : 'var(--danger)' }}>
+                      {p.profit >= 0 ? '+' : ''}R${p.profit.toFixed(0)}
+                    </div>
+                  </div>
+                  <div className="rounded-lg p-2.5 text-center" style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border-subtle)' }}>
+                    <div className="text-[9px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-ui)' }}>ROI</div>
+                    <div className="tnum font-bold text-[13px]" style={{ color: p.roi >= 0 ? 'var(--accent)' : 'var(--danger)' }}>
+                      {p.roi.toFixed(0)}%
+                    </div>
+                  </div>
+                  <div className="rounded-lg p-2.5 text-center" style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border-subtle)' }}>
+                    <div className="text-[9px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-ui)' }}>Camps</div>
+                    <div className="tnum font-bold text-[13px]" style={{ color: 'var(--text-primary)' }}>{p.campaignCount}</div>
+                  </div>
+                </div>
+
+                <div className="mb-3">
+                  <div className="flex justify-between items-center mb-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-ui)' }}>Health</span>
+                    <span className="tnum text-[11px] font-bold" style={{
+                      color: p.healthScore >= 80 ? 'var(--success)' : p.healthScore >= 60 ? 'var(--warn)' : 'var(--danger)',
+                      fontFamily: 'var(--font-mono)',
+                    }}>
+                      {p.healthScore}
+                    </span>
+                  </div>
+                  <div className="w-full rounded-full overflow-hidden" style={{ height: 3, background: 'var(--border-subtle)' }}>
+                    <div
+                      className="h-full transition-all duration-700"
+                      style={{
+                        width: `${p.healthScore}%`,
+                        background: p.healthScore >= 80 ? 'var(--success)' : p.healthScore >= 60 ? 'var(--warn)' : 'var(--danger)',
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onSelectProductForAnalysis(p); }}
+                    className="flex-1 flex items-center justify-center gap-1.5 rounded-lg text-[12px] font-semibold transition-colors"
+                    style={{ padding: '6px 12px', background: 'var(--accent)', color: '#fff', fontFamily: 'var(--font-ui)' }}
+                  >
+                    <BarChart2 size={12} /> Analise
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onDeleteProduct(p.id); }}
+                    className="flex items-center justify-center gap-1.5 rounded-lg text-[12px] font-semibold transition-colors"
+                    style={{ padding: '6px 12px', background: 'var(--danger-soft)', color: 'var(--danger)', fontFamily: 'var(--font-ui)' }}
+                    title="Excluir Produto"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+
+          {filteredAndSortedProducts.length === 0 && (
+            <div className="col-span-2 text-center py-16 rounded-xl border-2 border-dashed" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border-subtle)' }}>
+              <FolderOpen size={40} className="mx-auto mb-3" style={{ color: 'var(--border-strong)' }} />
+              <p className="font-medium text-[14px] mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                {products.length === 0 ? 'Sua pasta esta vazia' : 'Nenhum produto encontrado'}
+              </p>
+              <p className="text-[12px]" style={{ color: 'var(--text-muted)' }}>
+                {products.length === 0 ? 'Va em "Mapeamento" e salve seu primeiro produto' : 'Tente ajustar os filtros'}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* OTIMIZADORES */}
+      <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-8 rounded-xl text-white shadow-xl border border-slate-700">
+        <div className="flex items-center gap-3 mb-6">
+          <Zap className="text-yellow-400 animate-pulse" size={28} />
+          <h3 className="text-2xl font-bold">Otimizadores de Portfólio</h3>
+        </div>
+
+        <div className="mb-6">
+          <label className="text-sm text-slate-300 mb-3 block font-semibold">Escolha o Método de Otimização:</label>
+          <select 
+            value={optimizationMethod}
+            onChange={e => setOptimizationMethod(e.target.value as OptimizationMethod)}
+            className="w-full p-3 border-2 border-slate-600 rounded-lg bg-slate-700 text-white font-bold focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 outline-none transition-all"
+          >
+            <option value="simple"> Distribuição Equilibrada (Iniciante)</option>
+            <option value="simplex"> Simplex Otimizado (Avançado)</option>
+          </select>
+        </div>
+
+        {optimizationMethod === 'simple' ? (
+          <div className="bg-blue-900/30 border-l-4 border-blue-500 p-4 rounded-r-lg mb-6 text-sm text-blue-100">
+            <strong className="flex items-center gap-2 mb-2">
+              <Info size={16}/>  Distribuição Equilibrada
+            </strong>
+            <p className="leading-relaxed">
+              Aloca budget de forma proporcional ao ROI, distribuindo amplamente entre os produtos. 
+              <strong className="block mt-2"> Ideal para:</strong> Quem está testando vários produtos ou tem poucos dados históricos.
+            </p>
+          </div>
+        ) : (
+          <div className="bg-purple-900/30 border-l-4 border-purple-500 p-4 rounded-r-lg mb-6 text-sm text-purple-100">
+            <strong className="flex items-center gap-2 mb-2">
+              <Info size={16}/>  Simplex Otimizado
+            </strong>
+            <p className="leading-relaxed">
+              Algoritmo matemático que maximiza o lucro total considerando histórico, confiança nos dados e capacidade de cada produto.
+              <strong className="block mt-2"> Ideal para:</strong> Quem tem histórico (5+ campanhas) e quer maximizar lucro com recomendações específicas.
+            </p>
+          </div>
+        )}
+        
+        <div className="flex flex-col md:flex-row gap-4 items-end mb-8">
+          <div className="flex-1 w-full">
+            <label className="text-sm text-slate-300 mb-2 block font-semibold">Orçamento Mensal Disponível (R$)</label>
+            <div className="relative">
+              <span className="absolute left-3 top-3 text-slate-400 font-bold">R$</span>
+              <input 
+                type="number" 
+                value={simplexBudget} 
+                onChange={e => setSimplexBudget(parseFloat(e.target.value))}
+                className="bg-slate-700 border-2 border-slate-600 rounded-lg p-3 pl-10 w-full text-white placeholder-slate-500 focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 outline-none transition-all font-bold"
+                placeholder="1000.00"
+              />
+            </div>
+          </div>
+          
+          <button 
+            onClick={() => {
+              setAllocation(null);
+              setTimeout(() => {
+                handleOptimize();
+              }, 100);
+            }}
+            className="w-full md:w-auto bg-gradient-to-r from-yellow-500 to-orange-500 text-slate-900 px-8 py-3 rounded-lg font-black hover:from-yellow-400 hover:to-orange-400 transition-all flex items-center justify-center gap-2 shadow-lg hover:scale-105"
+          >
+            <TrendingUp size={20} /> Calcular Alocação Ótima
+          </button>
+          
+          <button 
+            onClick={() => {
+              setAllocation(null);
+              setOptimizationMethod('simple');
+              setSimplexBudget(1000);
+            }}
+            className="w-full md:w-auto bg-red-600 text-white px-6 py-3 rounded-lg font-black hover:bg-red-700 transition-all flex items-center justify-center gap-2 shadow-lg"
+          >
+             Limpar Resultados
+          </button>
+        </div>
+
+        {allocation && allocation.allocation && (
+          <div className="bg-slate-700/50 rounded-xl p-6 animate-in slide-in-from-bottom-4 border-2 border-slate-600 backdrop-blur-sm">
+            
+            {allocation.message && (
+              <div className="mb-6 bg-slate-800 p-4 rounded-lg border border-slate-600">
+                <p className="text-white font-medium">{allocation.message}</p>
+              </div>
+            )}
+
+            {optimizationMethod === 'simplex' && Array.isArray(allocation.allocation) && allocation.allocation.length > 0 && (
+              <div className="grid grid-cols-3 gap-4 mb-6 bg-slate-800 p-5 rounded-xl border border-slate-600">
+                <div>
+                  <div className="text-xs text-slate-400 uppercase font-bold">Budget Total</div>
+                  <div className="text-2xl font-black text-white">R$ {(allocation.totalBudget || 0).toFixed(2)}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-400 uppercase font-bold">Lucro Esperado</div>
+                  <div className="text-2xl font-black text-green-400">R$ {(allocation.totalExpectedProfit || 0).toFixed(2)}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-400 uppercase font-bold">ROI Médio</div>
+                  <div className="text-2xl font-black text-yellow-400">{(allocation.efficiency || 0).toFixed(1)}%</div>
+                </div>
+              </div>
+            )}
+
+            {optimizationMethod === 'simple' && Array.isArray(allocation.allocation) && allocation.allocation.length > 0 && (
+              <div className="grid grid-cols-3 gap-4 mb-6 bg-slate-800 p-5 rounded-xl border border-slate-600">
+                <div>
+                  <div className="text-xs text-slate-400 uppercase font-bold">Budget Alocado</div>
+                  <div className="text-2xl font-black text-white">R$ {(allocation.totalBudget - allocation.remainingBudget).toFixed(2)}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-400 uppercase font-bold">Lucro Esperado</div>
+                  <div className="text-2xl font-black text-green-400">R$ {allocation.totalProfit?.toFixed(2) || '0.00'}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-400 uppercase font-bold">ROI Médio</div>
+                  <div className="text-2xl font-black text-yellow-400">{allocation.efficiency?.toFixed(1) || '0.0'}%</div>
+                </div>
+              </div>
+            )}
+
+            <h4 className="font-bold mb-6 text-yellow-400 flex items-center gap-2 text-lg">
+              <Target /> Alocação Recomendada
+            </h4>
+            
+            <div className="space-y-3">
+              {(allocation.allocation || []).filter((item: any) => item && item.productName).map((item: any, idx: number) => (
+                <div key={idx} className="p-5 bg-slate-800 rounded-xl border-2 border-slate-600 shadow-lg hover:border-slate-500 transition-all">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1">
+                      <div className="font-bold text-white text-xl mb-1">{item.productName}</div>
+                      
+                      {optimizationMethod === 'simplex' && item.recommendation && (
+                        <>
+                          {item.recommendation === 'AUMENTAR' && (
+                            <div className="flex items-center gap-2 text-sm text-blue-400 font-semibold mb-1">
+                              <TrendingUp size={16} />
+                              Aumentar em {item.changePercent?.toFixed(0)}% 
+                              (de R$ {item.previousBudget?.toFixed(0)} → R$ {item.allocatedBudget.toFixed(0)})
+                            </div>
+                          )}
+                          
+                          {item.recommendation === 'REDUZIR' && (
+                            <div className="flex items-center gap-2 text-sm text-orange-400 font-semibold mb-1">
+                              <TrendingDown size={16} />
+                              Reduzir em {Math.abs(item.changePercent || 0).toFixed(0)}%
+                              (de R$ {item.previousBudget?.toFixed(0)} → R$ {item.allocatedBudget.toFixed(0)})
+                            </div>
+                          )}
+                          
+                          {item.recommendation === 'MANTER' && (
+                            <div className="flex items-center gap-2 text-sm text-green-400 font-semibold mb-1">
+                              <CheckCircle size={16} />
+                              Manter investimento (R$ {item.previousBudget?.toFixed(0)})
+                            </div>
+                          )}
+                          
+                          {item.recommendation === 'NOVO' && (
+                            <div className="flex items-center gap-2 text-sm text-purple-400 font-semibold mb-1">
+                               Novo investimento recomendado
+                            </div>
+                          )}
+
+                          <div className="text-xs text-slate-400 mt-1">
+                            Confiança nos dados: <span className={`font-bold ${
+                              item.confidence === 'Alta' ? 'text-green-400' :
+                              item.confidence === 'Média' ? 'text-yellow-400' :
+                              'text-orange-400'
+                            }`}>{item.confidence}</span>
+                          </div>
+                        </>
+                      )}
+
+                      {optimizationMethod === 'simple' && (
+                        <div className="text-xs text-green-400 font-mono mt-1">
+                           ROI Esperado: {item.expectedROI.toFixed(1)}%
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="bg-slate-700 p-3 rounded">
+                      <div className="text-xs text-slate-400 font-bold">Investir</div>
+                      <div className="font-bold text-white text-lg">R$ {(item.allocatedBudget || item.amount).toFixed(2)}</div>
+                    </div>
+                    <div className="bg-slate-700 p-3 rounded">
+                      <div className="text-xs text-slate-400 font-bold">Lucro Esperado</div>
+                      <div className="font-bold text-green-400 text-lg">R$ {item.expectedProfit.toFixed(2)}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {allocation && Array.isArray(allocation.allocation) && allocation.allocation.length === 0 && (
+                <p className="text-slate-400 text-center italic py-8">
+                  ️ Nenhum produto com ROI positivo suficiente para justificar investimento.
+                </p>
+              )}
+
+              {allocation && allocation.remainingBudget > 0 && (
+                <div className="mt-4 p-5 bg-slate-800/30 rounded-xl border-2 border-slate-600 border-dashed flex justify-between items-center">
+                  <span className="text-slate-300 font-semibold"> Reserva de Segurança (Não Alocada)</span>
+                  <span className="font-mono text-yellow-400 font-black text-xl">R$ {allocation.remainingBudget.toFixed(2)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};

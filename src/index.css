@@ -1,0 +1,613 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;0,14..32,900;1,14..32,400&family=Inter+Tight:wght@500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Tokens ──────────────────────────────────────────────────────────── */
+:root {
+  /* Fonts */
+  --font-ui:      'Inter Tight', 'Inter', system-ui, sans-serif;
+  --font-body:    'Inter', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-display: 'Instrument Serif', 'Times New Roman', serif;
+
+  /* Surfaces — slate palette */
+  --bg-app:        #F8FAFC;   /* slate-50  */
+  --bg-sidebar:    #0A0E1A;
+  --bg-card:       #FFFFFF;
+  --bg-subtle:     #F1F5F9;   /* slate-100 */
+  --bg-overlay:    rgba(10, 14, 26, 0.50);
+
+  /* Borders — slate palette */
+  --border-subtle: #E2E8F0;   /* slate-200 */
+  --border-strong: #CBD5E1;   /* slate-300 */
+  --border-dark:   rgba(255, 255, 255, 0.08);
+
+  /* Text — slate palette
+   * WCAG AA compliance:
+   *   --text-primary   slate-900  #0F172A  → 17.3:1 ✓
+   *   --text-secondary slate-600  #475569  →  7.0:1 ✓
+   *   --text-muted     slate-500  #64748B  →  5.9:1 ✓  (was slate-400 3.0:1 ✗)
+   *   --text-disabled  slate-400  #94A3B8  →  3.0:1  — decorative / disabled only
+   */
+  --text-primary:   #0F172A;   /* slate-900 */
+  --text-secondary: #475569;   /* slate-600 */
+  --text-muted:     #64748B;   /* slate-500  ← WCAG AA fixed (was #A8A29E slate-400 3.0:1) */
+  --text-disabled:  #94A3B8;   /* slate-400  — icons & disabled states only */
+  --text-inverse:   #F8FAFC;   /* slate-50  */
+
+  /* On-dark text — for sidebar and dark headers */
+  --text-on-dark-strong:   rgba(255, 255, 255, 0.95);
+  --text-on-dark-muted:    rgba(255, 255, 255, 0.60);
+  --text-on-dark-caption:  rgba(255, 255, 255, 0.38);
+
+  /* Accent — electric cyan */
+  --accent:         #0E7490;
+  --accent-hover:   #155E75;
+  --accent-glow:    #22D3EE;
+  --accent-soft:    #ECFEFF;
+
+  /* Semantic */
+  --success:      #059669;
+  --success-soft: #ECFDF5;
+  --danger:       #DC2626;
+  --danger-soft:  #FEF2F2;
+  --warn:         #D97706;
+  --warn-soft:    #FFFBEB;
+
+  /* ── Action intent tokens ───────────────────────────────────────────
+   * Use these on Button variant props instead of raw color classes.
+   * primary  = accent cyan  (analytics, navigation CTAs)
+   * save     = blue-800     (save, confirm, commit actions)
+   * danger   = red-600      (delete, destructive actions)
+   */
+  --action-primary:       #0E7490;   /* accent cyan */
+  --action-primary-hover: #155E75;
+  --action-save:          #1E40AF;   /* blue-800 */
+  --action-save-hover:    #1E3A8A;   /* blue-900 */
+  --action-save-shadow:   rgba(30, 64, 175, 0.30);
+  --action-danger:        #DC2626;   /* red-600 — same as --danger */
+  --action-danger-hover:  #B91C1C;
+
+  /* ── AI Assistant accent — violet/purple, exclusive to IA surfaces ──
+   * Never use on generic CTAs. Reserved for AI-powered features only.
+   */
+  --ai-accent:        #7C3AED;   /* violet-600 */
+  --ai-accent-hover:  #6D28D9;   /* violet-700 */
+  --ai-accent-shadow: rgba(124, 58, 237, 0.30);
+
+  /* ── Numeric data tokens ("Moneyness") ─────────────────────────────
+   * Apply via <Money> component or .num-* CSS classes.
+   *
+   * volume   = slate-900   — raw volumes (Receita, Investimento)
+   * positive = emerald-700 — profit, positive ROI, gains
+   * negative = red-700     — loss, negative ROI, deficits
+   * warning  = amber-700   — intermediate CPC, near-miss thresholds
+   * neutral  = slate-500   — zero values, labels, secondary info
+   * accent   = inherit from --accent — KPI highlights, selected state
+   *
+   * All WCAG AA compliant on white (#FFFFFF) background:
+   *   emerald-700 #047857  → 5.0:1 ✓
+   *   red-700     #B91C1C  → 5.5:1 ✓
+   *   amber-700   #B45309  → 4.9:1 ✓
+   *   slate-500   #64748B  → 5.9:1 ✓
+   *   slate-900   #0F172A  → 17.3:1 ✓
+   */
+  --num-volume:   #0F172A;   /* slate-900 */
+  --num-positive: #047857;   /* emerald-700 */
+  --num-negative: #B91C1C;   /* red-700 */
+  --num-warning:  #B45309;   /* amber-700 */
+  --num-neutral:  #64748B;   /* slate-500 */
+  --num-accent:   var(--accent);
+
+  /* ── Type scale tokens ─────────────────────────────────────────────
+   * Defined in px so they're independent of the html rem baseline.
+   * Use via .text-2xs/.text-xs CSS utilities or var(--text-*) in inline styles.
+   *
+   *   2xs  → 10px  all-caps labels with tracking-widest
+   *   xs   → 11px  secondary labels, badges, meta
+   *   sm   → 12px  body copy, form helpers
+   *   base → 13px  default body, card content
+   *   md   → 14px  section headers, prominent body
+   *   lg   → 16px  card titles, subheadings
+   *   xl   → 20px  page headings
+   *   2xl  → 24px  KPI numbers, dashboard metrics
+   *   display → 32px  hero numbers, large KPI
+   */
+  --text-2xs:     10px;
+  --text-xs:      11px;
+  --text-sm:      12px;
+  --text-base:    13px;
+  --text-md:      14px;
+  --text-lg:      16px;
+  --text-xl:      20px;
+  --text-2xl:     24px;
+  --text-display: 32px;
+
+  /* ── Font weight semantic tokens ────────────────────────────────────
+   * Map semantic roles to numeric weights.
+   *   label   — all-caps metric labels, nav items           (600 semibold)
+   *   body    — running copy, descriptions                  (400 regular)
+   *   strong  — card titles, table headers, headings        (700 bold)
+   *   display — KPI values, hero numbers (replace font-black) (800 extrabold)
+   */
+  --weight-label:   600;
+  --weight-body:    400;
+  --weight-strong:  700;
+  --weight-display: 800;
+
+  /* ── Spacing rhythm — 4pt scale ─────────────────────────────────────
+   * --space-N maps to N × 4px.  Use for gap, margin, padding.
+   *   space-1 =  4px   (tight inline gaps)
+   *   space-2 =  8px   (component inner padding, icon-label gaps)
+   *   space-3 = 12px   (card header padding, row gaps)
+   *   space-4 = 16px   (standard card body padding)
+   *   space-5 = 20px   (generous card body padding)
+   *   space-6 = 24px   (section spacing)
+   *   space-7 = 32px   (major section gaps)
+   *   space-8 = 40px   (page top padding, hero spacing)
+   */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-7:  32px;
+  --space-8:  40px;
+
+  /* ── Card padding presets ────────────────────────────────────────────
+   *   pad-sm  — compact cards, rows within a card
+   *   pad-md  — standard card body
+   *   pad-lg  — spacious card / primary action area
+   */
+  --card-pad-sm:  var(--space-3);   /* 12px */
+  --card-pad-md:  var(--space-4);   /* 16px */
+  --card-pad-lg:  var(--space-5);   /* 20px */
+
+  /* ── Section gap ─────────────────────────────────────────────────── */
+  --section-gap:  var(--space-6);   /* 24px — between major card sections */
+
+  /* Motion */
+  --motion-instant: 80ms;
+  --motion-fast:    150ms;
+  --motion-base:    220ms;
+  --motion-slow:    360ms;
+  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+
+  /* Card spacing */
+  --card-padding-header: 1rem 1.25rem;   /* 16px 20px — header rows */
+  --card-padding-body:   1.25rem;        /* 20px — content areas */
+
+  /* Shadows */
+  --shadow-xs:   0 1px 0 rgba(10, 14, 26, 0.04);
+  --shadow-sm:   0 1px 2px rgba(10, 14, 26, 0.04), 0 0 0 1px rgba(10, 14, 26, 0.05);
+  --shadow-md:   0 2px 8px rgba(10, 14, 26, 0.06), 0 0 0 1px rgba(10, 14, 26, 0.05);
+  --shadow-glow: 0 0 0 4px rgba(34, 211, 238, 0.15);
+}
+
+/* ─── Reset ──────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+@media (min-width: 1280px) { html { font-size: 15px; } }
+
+body {
+  min-height: 100vh;
+  font-family: var(--font-body);
+  background: var(--bg-app);
+  color: var(--text-primary);
+  font-feature-settings: 'cv11', 'ss01', 'ss03';
+}
+
+#root { width: 100%; min-height: 100vh; }
+
+/* ─── Typography ─────────────────────────────────────────────────────── */
+@layer base {
+  h1, h2, h3, h4, h5 {
+    font-family: var(--font-ui);
+    font-feature-settings: 'cv11';
+  }
+  h1 { @apply text-2xl font-bold text-slate-900; letter-spacing: -0.02em; }
+  h2 { @apply text-xl  font-semibold text-slate-900; letter-spacing: -0.015em; }
+  h3 { @apply text-base font-semibold text-slate-800; }
+  h4 { @apply text-sm   font-semibold text-slate-700; }
+  p  { @apply text-sm   text-slate-600 leading-relaxed; }
+}
+
+/* ─── Components ─────────────────────────────────────────────────────── */
+@layer components {
+
+  /* ═══ CARDS ═══════════════════════════════════════════════════════ */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xs);
+  }
+  .card-interactive {
+    @apply card;
+    transition: box-shadow var(--motion-fast) var(--ease-out),
+                border-color var(--motion-fast) var(--ease-out);
+  }
+  .card-interactive:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-strong);
+  }
+
+  /* ═══ METRIC TILE ═════════════════════════════════════════════════ */
+  .metric-tile {
+    @apply card flex flex-col gap-2 relative overflow-hidden;
+    padding: var(--card-pad-md);   /* 16px — token-driven */
+  }
+  .metric-label {
+    font-family: var(--font-ui);
+    @apply text-[11px] font-semibold uppercase text-slate-500;  /* slate-500 = 5.9:1 ✓ */
+    letter-spacing: 0.10em;
+  }
+  .metric-value {
+    font-family: var(--font-mono);
+    @apply text-2xl font-bold text-slate-900;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums slashed-zero;
+  }
+  .metric-delta {
+    font-family: var(--font-mono);
+    @apply text-xs font-semibold;
+    font-variant-numeric: tabular-nums;
+  }
+  .metric-delta-up   { color: var(--success); }
+  .metric-delta-down { color: var(--danger); }
+
+  /* ═══ BUTTONS ═════════════════════════════════════════════════════ */
+  .btn {
+    font-family: var(--font-ui);
+    @apply inline-flex items-center justify-center gap-2 rounded-[10px] font-semibold cursor-pointer border outline-none disabled:opacity-50 disabled:cursor-not-allowed select-none;
+    transition: all var(--motion-fast) var(--ease-out);
+    letter-spacing: -0.01em;
+  }
+  .btn:focus-visible { box-shadow: var(--shadow-glow); }
+
+  .btn-sm  { @apply text-xs  px-3 py-1.5; }
+  .btn-md  { @apply text-sm  px-4 py-2; }
+  .btn-lg  { @apply text-base px-5 py-2.5; }
+
+  .btn-primary {
+    background: var(--action-primary);
+    color: #FFFFFF;
+    border-color: var(--action-primary-hover);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 1px 2px rgba(14,116,144,0.30);
+  }
+  .btn-primary:hover { background: var(--action-primary-hover); }
+  .btn-primary:active { transform: translateY(0.5px); }
+
+  .btn-secondary {
+    @apply bg-white text-slate-800 border-slate-200 hover:bg-slate-50 hover:border-slate-300;
+    box-shadow: var(--shadow-xs);
+  }
+  .btn-ghost {
+    @apply bg-transparent text-slate-600 border-transparent hover:bg-slate-100 hover:text-slate-900;
+  }
+  .btn-danger {
+    background: var(--action-danger);
+    color: #FFFFFF;
+    border-color: var(--action-danger-hover);
+  }
+  .btn-danger:hover { background: var(--action-danger-hover); }
+  .btn-danger:active { transform: translateY(0.5px); }
+
+  /* btn-ai — violet-600, exclusively for AI-powered action CTAs */
+  .btn-ai {
+    background: var(--ai-accent);
+    color: #FFFFFF;
+    border-color: var(--ai-accent-hover);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 1px 2px var(--ai-accent-shadow);
+  }
+  .btn-ai:hover  { background: var(--ai-accent-hover); }
+  .btn-ai:active { transform: translateY(0.5px); }
+
+  /* btn-save — blue-800, for save/confirm/commit CTAs */
+  .btn-save {
+    background: var(--action-save);
+    color: #FFFFFF;
+    border-color: var(--action-save-hover);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 1px 2px var(--action-save-shadow);
+  }
+  .btn-save:hover  { background: var(--action-save-hover); }
+  .btn-save:active { transform: translateY(0.5px); }
+
+  /* ═══ KPI DISPLAY UTILITIES ═════════════════════════════════════
+   * .kpi-value — large monospaced number for dashboard KPIs
+   * .kpi-label — small all-caps label above the KPI value
+   *
+   * Usage:
+   *   <div class="kpi-label">Receita</div>
+   *   <div class="kpi-value num-volume">R$ 12.450</div>
+   */
+  .kpi-value {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xl);        /* 24px */
+    font-weight: var(--weight-display); /* 800 */
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums slashed-zero;
+    line-height: 1.1;
+  }
+  .kpi-label {
+    font-family: var(--font-ui);
+    font-size: var(--text-2xs);        /* 10px */
+    font-weight: var(--weight-label);  /* 600 */
+    text-transform: uppercase;
+    letter-spacing: 0.10em;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
+
+  /* ═══ LAYOUT HELPER ══════════════════════════════════════════════
+   * .section-stack — vertical flex column with --section-gap spacing.
+   * Drop on a wrapper div to get consistent section separation.
+   */
+  .section-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--section-gap);
+  }
+
+  /* ═══ NUMERIC DATA — "Moneyness" utilities ═══════════════════════
+   * Use alongside font-mono + tabular-nums for financial data.
+   * <span class="num-positive">R$ 1.200,00</span>
+   */
+  .num-volume   { color: var(--num-volume);   }
+  .num-positive { color: var(--num-positive); }
+  .num-negative { color: var(--num-negative); }
+  .num-warning  { color: var(--num-warning);  }
+  .num-neutral  { color: var(--num-neutral);  }
+  .num-accent   { color: var(--num-accent);   }
+
+  /* ═══ INPUTS ═════════════════════════════════════════════════════ */
+  .input {
+    font-family: var(--font-body);
+    @apply w-full border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900
+           placeholder:text-slate-400 outline-none;
+    border-radius: var(--radius-md);
+    transition: all var(--motion-fast) var(--ease-out);
+  }
+  .input:focus {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-glow);
+  }
+  .input-num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums slashed-zero;
+  }
+
+  /* ═══ BADGES ═════════════════════════════════════════════════════ */
+  .badge {
+    font-family: var(--font-ui);
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold;
+    letter-spacing: 0.02em;
+  }
+  .badge-success { background: var(--success-soft); color: var(--success); }
+  .badge-danger  { background: var(--danger-soft);  color: var(--danger); }
+  .badge-warn    { background: var(--warn-soft);     color: var(--warn); }
+  .badge-accent  { background: var(--accent-soft);   color: var(--accent); }
+  .badge-neutral { @apply bg-slate-100 text-slate-700; }
+
+  /* ═══ STATUS DOT ═════════════════════════════════════════════════ */
+  .status-dot {
+    @apply inline-block w-1.5 h-1.5 rounded-full relative flex-shrink-0;
+  }
+  .status-dot::after {
+    content: '';
+    @apply absolute inset-0 rounded-full;
+    animation: pulse-ring 2.4s var(--ease-out) infinite;
+  }
+  .status-dot-live  { background: var(--success); }
+  .status-dot-live::after  { background: var(--success); }
+  .status-dot-warn  { background: var(--warn); }
+  .status-dot-warn::after  { background: var(--warn); }
+  .status-dot-error { background: var(--danger); }
+  .status-dot-error::after { background: var(--danger); }
+  .status-dot-idle  { background: var(--text-muted); }
+  .status-dot-idle::after  { display: none; }
+
+  /* ═══ SKELETON ═══════════════════════════════════════════════════ */
+  .skeleton {
+    border-radius: var(--radius-md);
+    background: linear-gradient(90deg, #E2E8F0 0%, #F1F5F9 50%, #E2E8F0 100%);  /* slate-200→100→200 */
+    background-size: 200% 100%;
+    animation: shimmer 1.4s var(--ease-in-out) infinite;
+  }
+
+  /* ═══ TABLE ══════════════════════════════════════════════════════ */
+  .data-table { @apply w-full; }
+  .data-table thead tr {
+    background: var(--bg-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .data-table thead th {
+    font-family: var(--font-ui);
+    @apply px-3 py-2 text-left text-[11px] font-bold text-slate-500 uppercase;
+    letter-spacing: 0.08em;
+  }
+  .data-table tbody tr {
+    border-bottom: 1px solid var(--border-subtle);
+    transition: background var(--motion-fast) var(--ease-out);
+  }
+  .data-table tbody tr:hover { background: var(--bg-subtle); }
+  .data-table tbody td { @apply px-3 py-2.5 text-sm text-slate-800; }
+  .data-table .num-cell {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    @apply text-right text-slate-900;
+  }
+
+  /* ═══ KBD ════════════════════════════════════════════════════════ */
+  .kbd {
+    font-family: var(--font-mono);
+    @apply inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded text-[10px] font-medium
+           bg-slate-100 text-slate-500 border border-slate-200;
+  }
+
+  /* ═══ SECTION HEADERS ════════════════════════════════════════════ */
+  .section-header {
+    @apply flex items-center justify-between mb-4;
+  }
+  .section-title {
+    font-family: var(--font-ui);
+    @apply text-[11px] font-bold uppercase text-slate-500;  /* slate-500 = 5.9:1 ✓ */
+    letter-spacing: 0.10em;
+  }
+
+  /* ═══ ALERTS ═════════════════════════════════════════════════════ */
+  .alert {
+    @apply rounded-[10px] border px-4 py-3 text-sm flex items-start gap-3;
+  }
+  .alert-critical { @apply alert bg-red-50    border-red-200    text-red-800; }
+  .alert-warning  { @apply alert bg-amber-50  border-amber-200  text-amber-800; }
+  .alert-info     { @apply alert bg-slate-50  border-slate-200  text-slate-800; }
+  .alert-success  { @apply alert bg-emerald-50 border-emerald-200 text-emerald-800; }
+}
+
+/* ─── Animations ──────────────────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes pulse-ring {
+  0%   { transform: scale(1);   opacity: 0.7; }
+  80%  { transform: scale(2.6); opacity: 0;   }
+  100% { transform: scale(2.6); opacity: 0;   }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.page-enter { animation: fade-in var(--motion-base) var(--ease-out) both; }
+.tab-enter  { animation: fade-in var(--motion-fast) var(--ease-out) both; }
+.toast-enter { animation: slide-in-right var(--motion-base) var(--ease-out) both; }
+
+/* ─── Sidebar dark ───────────────────────────────────────────────────── */
+.sidebar-dark {
+  background: linear-gradient(180deg, #0F172A 0%, #1a2540 60%, #1E293B 100%);
+}
+.sidebar-dark .nav-item {
+  font-family: var(--font-ui);
+  @apply flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-[12.5px] font-medium cursor-pointer relative;
+  color: rgba(148, 163, 184, 0.80);   /* slate-400 toned */
+  transition: color var(--motion-fast) var(--ease-out),
+              background var(--motion-fast) var(--ease-out);
+  letter-spacing: -0.01em;
+}
+.sidebar-dark .nav-item:hover {
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.06);
+}
+.sidebar-dark .nav-item-active {
+  color: #FFFFFF !important;
+  font-weight: 600 !important;
+  background: rgba(255, 255, 255, 0.10) !important;
+  border-left: 2px solid #60A5FA !important;   /* blue-400 */
+  padding-left: calc(0.625rem - 2px) !important;
+}
+.sidebar-dark .nav-item-active::before {
+  display: none;   /* remove old cyan glow pseudo — replaced by border-left */
+}
+
+/* ─── Scrollbars ─────────────────────────────────────────────────────── */
+::-webkit-scrollbar              { width: 5px; height: 5px; }
+::-webkit-scrollbar-track        { background: transparent; }
+::-webkit-scrollbar-thumb        { background: #CBD5E1; border-radius: 3px; }  /* slate-300 */
+::-webkit-scrollbar-thumb:hover  { background: #94A3B8; }                       /* slate-400 */
+* { scrollbar-width: thin; scrollbar-color: #CBD5E1 transparent; }
+
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+.sidebar-dark ::-webkit-scrollbar-thumb       { background: rgba(255,255,255,0.12); border-radius: 3px; }
+.sidebar-dark ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
+
+/* ─── Focus rings ────────────────────────────────────────────────────── */
+/*
+ * All interactive elements that use outline-none must show a visible
+ * focus ring for keyboard/accessibility. This catch-all rule applies
+ * the design system glow to any element with outline-none that hasn't
+ * defined its own focus-visible style.
+ *
+ * Components that already define focus rings: .btn, .input
+ * This covers: <select>, bare <button>, <a>, custom inputs
+ */
+:focus-visible {
+  outline: 2px solid transparent;
+  outline-offset: 0;
+  box-shadow: var(--shadow-glow);
+}
+
+/* Select elements: add border treatment on focus */
+select:focus-visible,
+select:focus {
+  outline: none;
+  border-color: var(--accent) !important;
+  box-shadow: var(--shadow-glow) !important;
+}
+
+/* ─── Type-scale utilities (token-linked) ────────────────────────────────── */
+/*
+ * These extend Tailwind with our CSS variable tokens.
+ * text-2xs = 10px  (replaces text-[10px] from Fase 6 sweep)
+ *
+ * Note: text-[11px] not replaced globally — Tailwind's text-xs adds
+ * a line-height side-effect. Tracked for Fase 7.
+ */
+@layer utilities {
+  .text-2xs {
+    font-size: var(--text-2xs);   /* 10px */
+    line-height: 1.4;
+  }
+
+  /* Card padding utilities */
+  .p-card-sm  { padding: var(--card-pad-sm); }   /* 12px */
+  .p-card-md  { padding: var(--card-pad-md); }   /* 16px */
+  .p-card-lg  { padding: var(--card-pad-lg); }   /* 20px */
+
+  .px-card-md { padding-inline: var(--card-pad-md); }
+  .py-card-md { padding-block:  var(--card-pad-md); }
+  .px-card-lg { padding-inline: var(--card-pad-lg); }
+  .py-card-lg { padding-block:  var(--card-pad-lg); }
+}
+
+/* ─── Utilities ──────────────────────────────────────────────────────── */
+.font-ui      { font-family: var(--font-ui) !important; }
+.font-body    { font-family: var(--font-body) !important; }
+.font-mono    { font-family: var(--font-mono) !important; }
+.font-display {
+  font-family: var(--font-display) !important;
+  font-style: italic;
+  letter-spacing: -0.02em;
+}
+
+.tnum {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums slashed-zero;
+}

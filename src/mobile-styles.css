@@ -1,0 +1,97 @@
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+  html, body {
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  * {
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+    touch-action: manipulation;
+  }
+
+  .mobile-card {
+    @apply rounded-2xl shadow-lg overflow-hidden;
+    transition: transform 0.2s ease;
+  }
+
+  .mobile-card:active {
+    transform: scale(0.98);
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  @supports (-webkit-touch-callout: none) {
+    .safe-area-bottom {
+      padding-bottom: max(env(safe-area-inset-bottom), 8px);
+    }
+  }
+
+  .mobile-scroll {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+
+  .pull-to-refresh {
+    overscroll-behavior-y: contain;
+  }
+
+  /* Ajustar botão IA no mobile */
+  .ai-assistant-button,
+  [class*="ai-assistant"],
+  [class*="AIAssistant"] {
+    bottom: 120px !important;
+    z-index: 25 !important;
+  }
+}
+
+/* Animações */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromBottom {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s ease-out forwards;
+}
+
+.animate-slide-in-bottom {
+  animation: slideInFromBottom 0.3s ease-out forwards;
+}
+
+.animate-slide-in-right {
+  animation: slideInFromRight 0.3s ease-out forwards;
+}
+@media (max-width: 768px) {
+  .ai-assistant-container {
+    bottom: 120px !important;
+    right: 16px !important;
+    z-index: 25 !important;
+  }
+}

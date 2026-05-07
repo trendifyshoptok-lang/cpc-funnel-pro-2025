@@ -1,0 +1,209 @@
+/* ==========================================
+   DARK MODE GLOBAL - Aplica em todo o app
+   ========================================== */
+
+/* Transição suave em todas as mudanças de cor */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Modo Escuro - Estilos Globais */
+.dark {
+  /* Fundos principais */
+  background-color: #0f172a; /* slate-900 */
+  color: #f1f5f9; /* slate-100 */
+}
+
+/* Fundos brancos viram cinza escuro */
+.dark .bg-white {
+  background-color: #1e293b !important; /* slate-800 */
+}
+
+/* Fundos cinza claro viram cinza mais escuro */
+.dark .bg-gray-50 {
+  background-color: #0f172a !important; /* slate-900 */
+}
+
+.dark .bg-gray-100 {
+  background-color: #1e293b !important; /* slate-800 */
+}
+
+.dark .bg-gray-200 {
+  background-color: #334155 !important; /* slate-700 */
+}
+
+/* Textos escuros viram claros */
+.dark .text-gray-900 {
+  color: #f1f5f9 !important; /* slate-100 */
+}
+
+.dark .text-gray-800 {
+  color: #e2e8f0 !important; /* slate-200 */
+}
+
+.dark .text-gray-700 {
+  color: #cbd5e1 !important; /* slate-300 */
+}
+
+.dark .text-gray-600 {
+  color: #94a3b8 !important; /* slate-400 */
+}
+
+.dark .text-gray-500 {
+  color: #64748b !important; /* slate-500 */
+}
+
+.dark .text-black {
+  color: #f1f5f9 !important; /* slate-100 */
+}
+
+/* Bordas */
+.dark .border-gray-200 {
+  border-color: #334155 !important; /* slate-700 */
+}
+
+.dark .border-gray-300 {
+  border-color: #475569 !important; /* slate-600 */
+}
+
+/* Cards e containers */
+.dark [class*="shadow"] {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Inputs e formulários */
+.dark input,
+.dark textarea,
+.dark select {
+  background-color: #1e293b !important; /* slate-800 */
+  border-color: #475569 !important; /* slate-600 */
+  color: #f1f5f9 !important; /* slate-100 */
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #64748b !important; /* slate-500 */
+}
+
+.dark input:focus,
+.dark textarea:focus,
+.dark select:focus {
+  border-color: #3b82f6 !important; /* blue-500 */
+  background-color: #0f172a !important; /* slate-900 */
+}
+
+/* Botões */
+.dark button:not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]):not([class*="bg-purple"]):not([class*="bg-indigo"]) {
+  background-color: #334155 !important; /* slate-700 */
+  color: #f1f5f9 !important; /* slate-100 */
+}
+
+.dark button:hover:not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]):not([class*="bg-purple"]):not([class*="bg-indigo"]) {
+  background-color: #475569 !important; /* slate-600 */
+}
+
+/* Tabelas */
+.dark table {
+  background-color: #1e293b !important; /* slate-800 */
+}
+
+.dark thead {
+  background-color: #0f172a !important; /* slate-900 */
+}
+
+.dark tbody tr {
+  border-color: #334155 !important; /* slate-700 */
+}
+
+.dark tbody tr:hover {
+  background-color: #334155 !important; /* slate-700 */
+}
+
+/* Gradientes - ajustar para modo escuro */
+.dark [class*="from-blue"] {
+  --tw-gradient-from: #1e3a8a !important; /* blue-900 */
+}
+
+.dark [class*="to-purple"] {
+  --tw-gradient-to: #581c87 !important; /* purple-900 */
+}
+
+.dark [class*="from-green"] {
+  --tw-gradient-from: #14532d !important; /* green-900 */
+}
+
+.dark [class*="to-emerald"] {
+  --tw-gradient-to: #064e3b !important; /* emerald-900 */
+}
+
+/* Alertas coloridos - manter visíveis */
+.dark .bg-red-50 {
+  background-color: #7f1d1d !important; /* red-900 */
+}
+
+.dark .bg-yellow-50 {
+  background-color: #713f12 !important; /* yellow-900 */
+}
+
+.dark .bg-green-50 {
+  background-color: #14532d !important; /* green-900 */
+}
+
+.dark .bg-blue-50 {
+  background-color: #1e3a8a !important; /* blue-900 */
+}
+
+/* Textos coloridos - aumentar contraste */
+.dark .text-red-700,
+.dark .text-red-800 {
+  color: #fca5a5 !important; /* red-300 */
+}
+
+.dark .text-yellow-700,
+.dark .text-yellow-800 {
+  color: #fde047 !important; /* yellow-300 */
+}
+
+.dark .text-green-700,
+.dark .text-green-800 {
+  color: #86efac !important; /* green-300 */
+}
+
+.dark .text-blue-700,
+.dark .text-blue-800 {
+  color: #93c5fd !important; /* blue-300 */
+}
+
+.dark .text-purple-700,
+.dark .text-purple-800 {
+  color: #d8b4fe !important; /* purple-300 */
+}
+
+/* Gráficos Recharts - ajustar para modo escuro */
+.dark .recharts-cartesian-grid-horizontal line,
+.dark .recharts-cartesian-grid-vertical line {
+  stroke: #334155 !important; /* slate-700 */
+}
+
+.dark .recharts-text {
+  fill: #94a3b8 !important; /* slate-400 */
+}
+
+/* Scrollbar personalizada para modo escuro */
+.dark ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #1e293b; /* slate-800 */
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #475569; /* slate-600 */
+  border-radius: 5px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #64748b; /* slate-500 */
+}
