@@ -46,7 +46,7 @@ export const AIAssistant: React.FC<{ contextPrompt?: string }> = ({ contextPromp
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-[76px] md:bottom-6 right-4 md:right-6 z-50">
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
@@ -59,7 +59,7 @@ export const AIAssistant: React.FC<{ contextPrompt?: string }> = ({ contextPromp
       )}
 
       {isOpen && (
-        <div className="bg-white rounded-2xl shadow-2xl w-[350px] md:w-[450px] flex flex-col h-[500px] border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom">
+        <div className="bg-white rounded-2xl shadow-2xl w-[calc(100vw-2rem)] max-w-[350px] md:w-[450px] md:max-w-none flex flex-col h-[480px] md:h-[500px] border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom">
           
           {/* Header */}
           <div className="p-4 flex justify-between items-center text-white" style={{ background: 'var(--ai-accent)' }}>

@@ -1,27 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import {
+  Sun,
   LayoutDashboard,
-  Search,
+  Map,
   Settings,
-  BarChart3,
+  BarChart2,
   Briefcase,
   TrendingUp,
+  GitCompare,
+  BookOpen,
   Menu,
   X,
   Download,
   Upload,
-  Database,
-  CheckCircle,
   Clock,
-  Package,
-  DollarSign,
-  Moon,
-  Sun
+  CheckCircle,
+  Zap,
+  ChevronRight,
 } from 'lucide-react';
 
-// ==========================================
-// TIPOS
-// ==========================================
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface MobileLayoutProps {
   children: React.ReactNode;
@@ -35,47 +33,60 @@ interface MobileLayoutProps {
   onImport?: () => void;
 }
 
-// ==========================================
-// HOOK: Detectar dispositivo mobile
-// ==========================================
+// ── Hook: detect mobile ────────────────────────────────────────────────────────
 
 const useIsMobile = () => {
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    const checkMobile = () => {
-      const width = window.innerWidth;
-      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-      setIsMobile(width < 768 || isTouchDevice);
+    const check = () => {
+      setIsMobile(window.innerWidth < 768 || 'ontouchstart' in window || navigator.maxTouchPoints > 0);
     };
-
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
   }, []);
 
   return isMobile;
 };
 
-// ==========================================
-// HOOK: Dark Mode
-// ==========================================
+// ── Navigation config (IDs must match App.tsx) ────────────────────────────────
 
-const useDarkMode = () => {
-  const [isDark, setIsDark] = useState(false);
+const ALL_TABS = [
+  { id: 'hoje',       label: 'Início',      icon: Sun,           group: 'Principal' },
+  { id: 'dashboard',  label: 'Dashboard',   icon: LayoutDashboard, group: 'Principal' },
+  { id: 'portfolio',  label: 'Portfólio',   icon: Briefcase,     group: 'Principal' },
+  { id: 'mapping',    label: 'Mapeamento',  icon: Map,           group: 'Produto'   },
+  { id: 'setup',      label: 'Setup',       icon: Settings,      group: 'Produto'   },
+  { id: 'analysis',   label: 'Análise',     icon: BarChart2,     group: 'Produto'   },
+  { id: 'scale',      label: 'Simulação',   icon: TrendingUp,    group: 'Ferramentas' },
+  { id: 'comparator', label: 'Comparador',  icon: GitCompare,    group: 'Ferramentas' },
+  { id: 'manual',     label: 'Manual',      icon: BookOpen,      group: 'Ajuda'     },
+];
 
-  useEffect(() => {
-    // Clean Pro design does not support dark mode — always keep light theme
-    document.documentElement.classList.remove('dark');
-    localStorage.removeItem('darkMode');
-  }, []);
+const BOTTOM_NAV = [
+  { id: 'hoje',      label: 'Início',   icon: Sun },
+  { id: 'mapping',   label: 'Mapear',   icon: Map },
+  { id: 'portfolio', label: 'Produtos', icon: Briefcase },
+  { id: 'analysis',  label: 'Análise',  icon: BarChart2 },
+  { id: 'menu',      label: 'Menu',     icon: Menu },
+];
 
-  return { isDark, toggleDark: () => setIsDark(p => !p) };
+const PAGE_LABELS: Record<string, string> = {
+  hoje:       'Início',
+  dashboard:  'Dashboard',
+  portfolio:  'Portfólio',
+  mapping:    'Mapeamento',
+  setup:      'Setup',
+  analysis:   'Análise',
+  scale:      'Simulação',
+  comparator: 'Comparador',
+  manual:     'Manual',
 };
 
-// ==========================================
-// COMPONENTE PRINCIPAL
-// ==========================================
+const GROUP_ORDER = ['Principal', 'Produto', 'Ferramentas', 'Ajuda'];
+
+// ── Component ──────────────────────────────────────────────────────────────────
 
 export const MobileLayout: React.FC<MobileLayoutProps> = ({
   children,
@@ -86,35 +97,16 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
   productsCount = 0,
   campaignsCount = 0,
   onExport,
-  onImport
+  onImport,
 }) => {
   const isMobile = useIsMobile();
-  const { isDark, toggleDark } = useDarkMode();
   const [showMenu, setShowMenu] = useState(false);
-  const [showQuickActions, setShowQuickActions] = useState(false);
 
-  // Tabs disponíveis
-  const allTabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, emoji: '' },
-    { id: 'mapping', label: 'Mapeamento', icon: Search, emoji: '' },
-    { id: 'setup', label: 'Setup', icon: Settings, emoji: '️' },
-    { id: 'analysis', label: 'Análise', icon: BarChart3, emoji: '' },
-    { id: 'portfolio', label: 'Portfólio', icon: Briefcase, emoji: '' },
-    { id: 'scale', label: 'Escala', icon: TrendingUp, emoji: '' },
-    { id: 'comparator', label: 'Comparador', icon: BarChart3, emoji: '️' },
-    { id: 'reports', label: 'Relatórios', icon: BarChart3, emoji: '' },
-    { id: 'history', label: 'Histórico', icon: BarChart3, emoji: '' },
-    { id: 'manual', label: 'Manual', icon: Settings, emoji: '' }
-  ];
-
-  // Bottom Navigation (4 principais + Menu)
-  const bottomNavTabs = [
-    { id: 'hoje', label: 'Início', icon: LayoutDashboard },
-    { id: 'mapping', label: 'Mapear', icon: Search },
-    { id: 'portfolio', label: 'Produtos', icon: Briefcase },
-    { id: 'scale', label: 'Escalar', icon: TrendingUp },
-    { id: 'menu', label: 'Menu', icon: Menu }
-  ];
+  // Always force light theme — Clean Pro doesn't support dark mode
+  useEffect(() => {
+    document.documentElement.classList.remove('dark');
+    localStorage.removeItem('darkMode');
+  }, []);
 
   const handleTabClick = (tabId: string) => {
     if (tabId === 'menu') {
@@ -125,258 +117,265 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
     }
   };
 
-  // Renderização condicional: Mobile ou Desktop
-  if (!isMobile) {
-    // Desktop: renderizar children normalmente (Layout.tsx existente)
-    return <>{children}</>;
-  }
+  // Desktop: let Layout.tsx render normally
+  if (!isMobile) return <>{children}</>;
 
-  // ==========================================
-  // MOBILE LAYOUT
-  // ==========================================
+  const currentLabel = PAGE_LABELS[activeTab] ?? 'CPC Funnel Pro';
+
+  // Group menu tabs
+  const groupedTabs = GROUP_ORDER.map(group => ({
+    group,
+    tabs: ALL_TABS.filter(t => t.group === group),
+  }));
 
   return (
-    <div className={`min-h-screen ${isDark ? 'dark' : ''}`}>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
-        
-        {/* Mobile Header */}
-        <header className="sticky top-0 z-30 bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-800 dark:to-purple-800 shadow-lg">
-          <div className="px-4 py-3">
-            {/* Top Row */}
-            <div className="flex justify-between items-center mb-3">
-              <div className="flex items-center gap-3">
-                <div className="bg-white/20 backdrop-blur-sm p-2 rounded-xl">
-                  <Database size={24} className="text-white" />
-                </div>
-                <div>
-                  <h1 className="text-lg font-black text-white">
-                    CPC & Funnel Pro
-                  </h1>
-                  <p className="text-xs text-indigo-100">v4.0 Mobile</p>
-                </div>
-              </div>
+    <div className="min-h-dvh bg-slate-50">
 
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={toggleDark}
-                  className="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors"
-                >
-                  {isDark ? <Sun size={20} className="text-white" /> : <Moon size={20} className="text-white" />}
-                </button>
-                
-                <button
-                  onClick={() => setShowQuickActions(!showQuickActions)}
-                  className="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors"
-                >
-                  <Settings size={20} className="text-white" />
-                </button>
-              </div>
+      {/* ── Mobile Header (Clean Pro Dark Navy) ──────────────────────────── */}
+      <header className="sticky top-0 z-30 overflow-hidden" style={{ background: 'linear-gradient(135deg, #0A0E1A 0%, #0E2233 55%, #0A1628 100%)' }}>
+
+        {/* Dot matrix texture */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: 'radial-gradient(circle, rgba(34,211,238,0.06) 1px, transparent 1px)',
+            backgroundSize: '18px 18px',
+          }}
+        />
+
+        {/* Top row — Logo + Save indicator + Actions */}
+        <div className="relative flex items-center justify-between px-4 pt-4 pb-3">
+
+          {/* Logo */}
+          <div className="flex items-center gap-2.5">
+            <div
+              className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: 'rgba(34,211,238,0.15)', border: '1px solid rgba(34,211,238,0.25)' }}
+            >
+              <Zap size={15} style={{ color: '#22D3EE' }} />
             </div>
-
-            {/* Stats Row */}
-            <div className="grid grid-cols-2 gap-2">
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2 flex items-center gap-2">
-                <Package size={16} className="text-white/80" />
-                <div>
-                  <div className="text-[10px] text-white/60 font-semibold">Produtos</div>
-                  <div className="text-lg font-black text-white">{productsCount}</div>
-                </div>
-              </div>
-              
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2 flex items-center gap-2">
-                <BarChart3 size={16} className="text-white/80" />
-                <div>
-                  <div className="text-[10px] text-white/60 font-semibold">Campanhas</div>
-                  <div className="text-lg font-black text-white">{campaignsCount}</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Saving Indicator */}
-            {isSaving && (
-              <div className="mt-2 flex items-center gap-2 text-xs text-white/90 bg-white/10 px-3 py-1.5 rounded-full">
-                <Clock size={12} className="animate-spin" />
-                <span>Salvando...</span>
-              </div>
-            )}
-
-            {!isSaving && lastSaveTime && (
-              <div className="mt-2 flex items-center gap-2 text-xs text-white/80 bg-white/10 px-3 py-1.5 rounded-full">
-                <CheckCircle size={12} className="text-green-300" />
-                <span>
-                  Salvo {lastSaveTime.toLocaleTimeString('pt-BR', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-black text-white tracking-tight leading-none">CPC FUNNEL</span>
+                <span
+                  className="text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest leading-none"
+                  style={{ background: 'rgba(34,211,238,0.20)', color: '#22D3EE', border: '1px solid rgba(34,211,238,0.30)' }}
+                >
+                  PRO
                 </span>
               </div>
-            )}
+              {/* Current page breadcrumb */}
+              <p className="text-[10px] font-medium mt-0.5" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                {currentLabel}
+              </p>
+            </div>
           </div>
-        </header>
 
-        {/* Quick Actions Drawer */}
-        {showQuickActions && (
-          <div 
-            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
-            onClick={() => setShowQuickActions(false)}
-          >
-            <div 
-              className="absolute bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl shadow-2xl p-6 animate-in slide-in-from-bottom duration-300"
-              onClick={(e) => e.stopPropagation()}
+          {/* Right: save status + quick-actions */}
+          <div className="flex items-center gap-2">
+            {/* Save indicator */}
+            {isSaving && (
+              <div
+                className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold"
+                style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.60)' }}
+              >
+                <Clock size={10} className="animate-spin" />
+                <span>Salvando</span>
+              </div>
+            )}
+            {!isSaving && lastSaveTime && (
+              <div
+                className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold"
+                style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(52,211,153,0.85)' }}
+              >
+                <CheckCircle size={10} />
+                <span>{lastSaveTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+            )}
+
+            {/* Quick actions (export/import) */}
+            <button
+              onClick={onExport}
+              className="w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-95"
+              style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
+              aria-label="Exportar dados"
             >
-              <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6" />
-              
-              <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-4">
-                Ações Rápidas
-              </h3>
+              <Download size={14} style={{ color: 'rgba(255,255,255,0.65)' }} />
+            </button>
+            <button
+              onClick={onImport}
+              className="w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-95"
+              style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
+              aria-label="Importar dados"
+            >
+              <Upload size={14} style={{ color: 'rgba(255,255,255,0.65)' }} />
+            </button>
+          </div>
+        </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => {
-                    onExport?.();
-                    setShowQuickActions(false);
-                  }}
-                  className="flex flex-col items-center gap-2 p-4 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
-                >
-                  <Download size={24} className="text-indigo-600 dark:text-indigo-400" />
-                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-                    Backup
-                  </span>
-                </button>
+        {/* Stats row */}
+        <div className="relative grid grid-cols-2 gap-2 px-4 pb-3.5">
+          <div
+            className="flex items-center gap-2 px-3 py-2 rounded-xl"
+            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)' }}
+          >
+            <Briefcase size={13} style={{ color: 'rgba(34,211,238,0.70)' }} />
+            <div>
+              <div className="text-[9px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.40)' }}>Produtos</div>
+              <div className="text-base font-black text-white leading-tight tabular-nums">{productsCount}</div>
+            </div>
+          </div>
+          <div
+            className="flex items-center gap-2 px-3 py-2 rounded-xl"
+            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)' }}
+          >
+            <BarChart2 size={13} style={{ color: 'rgba(96,165,250,0.70)' }} />
+            <div>
+              <div className="text-[9px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.40)' }}>Campanhas</div>
+              <div className="text-base font-black text-white leading-tight tabular-nums">{campaignsCount}</div>
+            </div>
+          </div>
+        </div>
+      </header>
 
+      {/* ── Main Content ────────────────────────────────────────────────────── */}
+      <main className="pb-[72px] min-h-[calc(100dvh-180px)] bg-slate-50">
+        {children}
+      </main>
+
+      {/* ── Bottom Navigation ────────────────────────────────────────────────── */}
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-slate-200 shadow-[0_-1px_8px_rgba(0,0,0,0.06)]"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
+        <div className="flex justify-around items-center px-1 py-1.5">
+          {BOTTOM_NAV.map(({ id, label, icon: Icon }) => {
+            const isActive = activeTab === id;
+            return (
+              <button
+                key={id}
+                onClick={() => handleTabClick(id)}
+                className={`flex flex-col items-center justify-center flex-1 py-1.5 px-1 rounded-xl transition-all duration-150 relative min-h-[48px] ${
+                  isActive
+                    ? 'text-blue-600'
+                    : 'text-slate-400 active:bg-slate-100'
+                }`}
+                aria-label={label}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                {isActive && (
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-blue-600 rounded-b-full" />
+                )}
+                <Icon size={20} className={`transition-transform duration-150 ${isActive ? 'scale-110' : 'scale-100'}`} />
+                <span className={`text-[10px] font-semibold mt-0.5 ${isActive ? 'text-blue-600' : 'text-slate-400'}`}>
+                  {label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+
+      {/* ── Full Menu Drawer ──────────────────────────────────────────────────── */}
+      {showMenu && (
+        <div className="fixed inset-0 z-50 animate-in fade-in duration-200">
+          {/* Scrim */}
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowMenu(false)}
+          />
+
+          {/* Slide-in panel */}
+          <div className="absolute inset-y-0 right-0 w-full max-w-[320px] bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-250">
+
+            {/* Menu header — dark navy matching main header */}
+            <div
+              className="relative px-5 py-5 overflow-hidden flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg, #0A0E1A 0%, #0E2233 55%, #0A1628 100%)' }}
+            >
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  backgroundImage: 'radial-gradient(circle, rgba(34,211,238,0.05) 1px, transparent 1px)',
+                  backgroundSize: '18px 18px',
+                }}
+              />
+              <div className="relative flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <Zap size={14} style={{ color: '#22D3EE' }} />
+                    <span className="text-sm font-black text-white tracking-tight">CPC FUNNEL PRO</span>
+                  </div>
+                  <p className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.40)' }}>Navegação completa</p>
+                </div>
                 <button
-                  onClick={() => {
-                    onImport?.();
-                    setShowQuickActions(false);
-                  }}
-                  className="flex flex-col items-center gap-2 p-4 bg-purple-50 dark:bg-purple-900/30 rounded-xl hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors"
+                  onClick={() => setShowMenu(false)}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-95"
+                  style={{ background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.15)' }}
+                  aria-label="Fechar menu"
                 >
-                  <Upload size={24} className="text-purple-600 dark:text-purple-400" />
-                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-                    Restaurar
-                  </span>
+                  <X size={16} className="text-white" />
                 </button>
               </div>
             </div>
-          </div>
-        )}
 
-        {/* Main Content */}
-        <main className="pb-20 min-h-[calc(100vh-180px)] bg-slate-50">
-          {children}
-        </main>
-
-        {/* Bottom Navigation */}
-        <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-30 safe-area-bottom shadow-lg">
-          <div className="flex justify-around items-center px-2 py-2">
-            {bottomNavTabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => handleTabClick(tab.id)}
-                  className={`flex flex-col items-center justify-center flex-1 py-2 px-1 rounded-xl transition-all relative ${
-                    isActive
-                      ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30'
-                      : 'text-gray-500 dark:text-gray-400 active:bg-gray-100 dark:active:bg-gray-700'
-                  }`}
-                >
-                  <Icon 
-                    size={22} 
-                    className={`mb-1 transition-transform ${
-                      isActive ? 'scale-110' : 'scale-100'
-                    }`}
-                  />
-                  <span className="text-[10px] font-semibold">{tab.label}</span>
-                  
-                  {isActive && (
-                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-8 h-1 bg-indigo-600 dark:bg-indigo-400 rounded-t-full" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </nav>
-
-        {/* Menu Lateral Fullscreen */}
-        {showMenu && (
-          <div className="fixed inset-0 z-50 animate-in fade-in duration-200">
-            {/* Overlay */}
-            <div 
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-              onClick={() => setShowMenu(false)}
-            />
-            
-            {/* Menu Panel */}
-            <div className="absolute inset-y-0 right-0 w-full max-w-sm bg-white dark:bg-gray-800 shadow-2xl animate-in slide-in-from-right duration-300">
-              {/* Header */}
-              <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white">
-                <div className="flex justify-between items-center mb-4">
-                  <div>
-                    <h2 className="text-xl font-black">Menu Completo</h2>
-                    <p className="text-sm text-indigo-100">Todas as funcionalidades</p>
+            {/* Nav groups */}
+            <div className="flex-1 overflow-y-auto py-3 px-3 space-y-4">
+              {groupedTabs.map(({ group, tabs }) => (
+                <div key={group}>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 px-2 mb-1.5">{group}</p>
+                  <div className="space-y-0.5">
+                    {tabs.map(({ id, label, icon: Icon }) => {
+                      const isActive = activeTab === id;
+                      return (
+                        <button
+                          key={id}
+                          onClick={() => handleTabClick(id)}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 ${
+                            isActive
+                              ? 'bg-blue-600 text-white shadow-sm'
+                              : 'text-slate-700 hover:bg-slate-100 active:bg-slate-100'
+                          }`}
+                        >
+                          <Icon size={16} className={isActive ? 'text-white' : 'text-slate-500'} />
+                          <span className="text-sm font-semibold flex-1 text-left">{label}</span>
+                          {isActive
+                            ? <div className="w-1.5 h-1.5 bg-white/60 rounded-full" />
+                            : <ChevronRight size={14} className="text-slate-300" />
+                          }
+                        </button>
+                      );
+                    })}
                   </div>
+                </div>
+              ))}
+
+              {/* Data actions */}
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 px-2 mb-1.5">Dados</p>
+                <div className="space-y-0.5">
                   <button
-                    onClick={() => setShowMenu(false)}
-                    className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                    onClick={() => { onExport?.(); setShowMenu(false); }}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-700 hover:bg-slate-100 active:bg-slate-100 transition-colors"
                   >
-                    <X size={24} />
+                    <Download size={16} className="text-slate-500" />
+                    <span className="text-sm font-semibold flex-1 text-left">Exportar Backup</span>
+                    <ChevronRight size={14} className="text-slate-300" />
+                  </button>
+                  <button
+                    onClick={() => { onImport?.(); setShowMenu(false); }}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-700 hover:bg-slate-100 active:bg-slate-100 transition-colors"
+                  >
+                    <Upload size={16} className="text-slate-500" />
+                    <span className="text-sm font-semibold flex-1 text-left">Importar Backup</span>
+                    <ChevronRight size={14} className="text-slate-300" />
                   </button>
                 </div>
               </div>
-
-              {/* Menu Items */}
-              <div className="overflow-y-auto h-[calc(100vh-120px)] p-4">
-                <div className="space-y-2">
-                  {allTabs.map((tab) => {
-                    const Icon = tab.icon;
-                    const isActive = activeTab === tab.id;
-                    
-                    return (
-                      <button
-                        key={tab.id}
-                        onClick={() => handleTabClick(tab.id)}
-                        className={`w-full flex items-center gap-4 p-4 rounded-xl transition-all ${
-                          isActive
-                            ? 'bg-indigo-600 text-white shadow-lg scale-105'
-                            : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 active:scale-95'
-                        }`}
-                      >
-                        <div className={`p-2 rounded-lg ${
-                          isActive ? 'bg-white/20' : 'bg-white dark:bg-gray-600'
-                        }`}>
-                          <span className="text-2xl">{tab.emoji}</span>
-                        </div>
-                        <div className="flex-1 text-left">
-                          <div className="font-bold">{tab.label}</div>
-                        </div>
-                        {isActive && (
-                          <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
             </div>
           </div>
-        )}
-      </div>
-
-      {/* PWA Install Prompt (bonus) */}
-      <style>{`
-        .safe-area-bottom {
-          padding-bottom: env(safe-area-inset-bottom);
-        }
-        
-        @supports (-webkit-touch-callout: none) {
-          .safe-area-bottom {
-            padding-bottom: max(env(safe-area-inset-bottom), 8px);
-          }
-        }
-      `}</style>
+        </div>
+      )}
     </div>
   );
 };
