@@ -62,21 +62,15 @@ const useIsMobile = () => {
 // ==========================================
 
 const useDarkMode = () => {
-  const [isDark, setIsDark] = useState(() => {
-    const saved = localStorage.getItem('darkMode');
-    return saved === 'true';
-  });
+  const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem('darkMode', String(isDark));
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [isDark]);
+    // Clean Pro design does not support dark mode — always keep light theme
+    document.documentElement.classList.remove('dark');
+    localStorage.removeItem('darkMode');
+  }, []);
 
-  return { isDark, toggleDark: () => setIsDark(!isDark) };
+  return { isDark, toggleDark: () => setIsDark(p => !p) };
 };
 
 // ==========================================
@@ -115,7 +109,7 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
 
   // Bottom Navigation (4 principais + Menu)
   const bottomNavTabs = [
-    { id: 'dashboard', label: 'Home', icon: LayoutDashboard },
+    { id: 'hoje', label: 'Início', icon: LayoutDashboard },
     { id: 'mapping', label: 'Mapear', icon: Search },
     { id: 'portfolio', label: 'Produtos', icon: Briefcase },
     { id: 'scale', label: 'Escalar', icon: TrendingUp },
@@ -268,7 +262,7 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
         )}
 
         {/* Main Content */}
-        <main className="pb-20 min-h-[calc(100vh-180px)]">
+        <main className="pb-20 min-h-[calc(100vh-180px)] bg-slate-50">
           {children}
         </main>
 

@@ -700,6 +700,22 @@ const App = () => {
               onImport={handleImport}
             >
               <React.Suspense fallback={<RouteLoader />}>
+                {activeTab === "hoje" && (
+                  <TodayPanel
+                    products={products}
+                    history={history}
+                    currentProduct={currentProduct}
+                    fixedCosts={fixedCosts}
+                    fixedCostsTotal={totalFixedCosts}
+                    onChangeTab={handleTabChange}
+                    onSelectProduct={handleSetActiveProduct}
+                    onLoadSeedData={loadSeedData}
+                    onClearSeedData={clearSeedData}
+                    hasSeedData={hasSeedData}
+                    userName={userName}
+                  />
+                )}
+
                 {activeTab === "dashboard" && (
                   <Dashboard
                     products={products}
